@@ -1,0 +1,48 @@
+# PKI Secrets Engine to store an Org's CA
+pki/org-ca:
+  type: pki
+  roles:
+    # This role will be used to issue certificates
+    # for Org's websites
+    web:
+      server_flag: true
+      client_flag: false
+      ttl: 90d
+      organization: ["MyOrg"]
+      country: ["US"]
+      locality: ["LA"]
+      allowed_domains:
+        - example.com
+        - dev.example.com
+        - staging.example.com
+      access:
+        - "ldap.groups.ca-admins"
+
+  roles_conditional:
+    # This role can sign an employee's
+    # user certificate for code signing or client auth
+    client-generate:
+      client_flag: true
+      ttl: 365d
+      organization: ["MyOrg"]
+      country: ["US"]
+      locality: ["LA"]
+      # The CN of the Certificates must
+      # follow a pattern including their LDAP username.
+      # The 'email' can be a key to Vault templated strings
+      # in TF.
+      templated_common_name:
+        - email
+      key_usage:
+        - DigitalSignature
+        - KeyEncipherment
+      access:
+        # Everyone can request access for it,
+        # through PolicyGate plugin
+        requestors:
+          - "ldap.groups.Everyone"
+        # Only employee onboarders and John Doe
+        # can approve access to signing such certificates
+        approvers:
+          - "ldap.groups.Onboarders"
+          - "ldap.users.jdoe"
