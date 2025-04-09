@@ -71,3 +71,30 @@ adhoc:
       # Create and attach a templated policy for each membership
       # (and not one policy to all members)
       for_each: true
+
+# Kubernetes Secrets Engine to generate Dynamic Credentials
+# with specific K8s Roles/ClusterRoles
+staging/kubernetes:
+  type: kubernetes
+  roles:
+    admin:
+      access:
+        - "ldap.groups.KubernetesAdministrators"
+        - "ldap.users.jdoe"
+      namespaces: ["*"]
+      ttl: 3600
+    # Developers can deploy to only 3 Namespaces
+    deployer:
+      access:
+        - "ldap.groups.Developers"
+      namespaces:
+        - application
+        - stress-test1
+        - playground
+    bot-deploy:
+      access:
+        # This can be a GitHub Workflow
+        # authenticated to vault through Github Token
+        # with claims matching the middle part separated by comma
+        - "cicd.environment=staging,branch=main.org/repository"
+      namespaces: ["application"]
