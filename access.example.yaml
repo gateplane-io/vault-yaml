@@ -1,6 +1,5 @@
 # Vault/OpenBao YAML Configuration
-#
-#
+
 # PKI Secrets Engine to store an Org's CA
 pki/org-ca:
   type: pki
@@ -72,9 +71,11 @@ adhoc:
       # (and not one policy to all members)
       for_each: true
 
+# Kubernetes
+
 # Kubernetes Secrets Engine to generate Dynamic Credentials
 # with specific K8s Roles/ClusterRoles
-staging/kubernetes:
+staging/cluster01:
   type: kubernetes
   roles:
     admin:

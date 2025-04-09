@@ -66,7 +66,7 @@ module "kubernetes" {
 
   role_directory = "../roles/kubernetes"
 
-  path            = "staging/kubernetes"
+  path            = "staging/cluster01"
   description     = "Vault testing for K8s Cluster"
   kubernetes_host = "https://127.0.0.1:6443"
 
