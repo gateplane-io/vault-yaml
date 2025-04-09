@@ -1,3 +1,6 @@
+# Vault/OpenBao YAML Configuration
+#
+#
 # PKI Secrets Engine to store an Org's CA
 pki/org-ca:
   type: pki
@@ -16,7 +19,7 @@ pki/org-ca:
         - dev.example.com
         - staging.example.com
       access:
-        - "ldap.groups.ca-admins"
+        - "ldap.groups.CertificateAdministrators"
 
   roles_conditional:
     # This role can sign an employee's
@@ -46,3 +49,25 @@ pki/org-ca:
         approvers:
           - "ldap.groups.Onboarders"
           - "ldap.users.jdoe"
+
+# Ad-hoc Policies
+
+# The 'adhoc' block is used to directly create arbitrary
+# Vault Policies from template files located in a directory.
+adhoc:
+  type: vault
+  roles:
+    # Role names are the file names of the templates
+    secrets-personal:
+      access:
+        # This policy will be added to everyone
+        - "ldap.groups.Everyone"
+    secrets-group:
+      access:
+        # Every group will have a copy of this policy
+        - "ldap.groups.Administrators"
+        - "ldap.groups.Everyone"
+        - "ldap.groups.CertificateAdministrators"
+      # Create and attach a templated policy for each membership
+      # (and not one policy to all members)
+      for_each: true
