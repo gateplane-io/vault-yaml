@@ -82,7 +82,8 @@ staging/kubernetes:
         - "ldap.groups.KubernetesAdministrators"
         - "ldap.users.jdoe"
       namespaces: ["*"]
-      ttl: 3600
+      ttl: 600
+      ttl_max: 3600
     # Developers can deploy to only 3 Namespaces
     deployer:
       access:

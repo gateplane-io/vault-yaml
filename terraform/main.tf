@@ -59,3 +59,19 @@ module "adhoc" {
 
   accesses = local.accesses
 }
+
+
+module "kubernetes" {
+  source = "./modules/secret-engines/kubernetes"
+
+  role_directory = "../roles/kubernetes"
+
+  path            = "staging/kubernetes"
+  description     = "Vault testing for K8s Cluster"
+  kubernetes_host = "https://127.0.0.1:6443"
+
+  service_account_jwt = var.kubernetes_token
+  kubernetes_ca_cert  = var.kubernetes_ca
+
+  accesses = local.accesses
+}

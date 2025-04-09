@@ -24,7 +24,8 @@ locals {
       "path" : vault_mount.kvv2.path,
     },
     # Module outputs should be added:
-    (module.ca.entry["accessor"]) = module.ca.entry,
+    (module.ca.entry["accessor"])         = module.ca.entry,
+    (module.kubernetes.entry["accessor"]) = module.kubernetes.entry,
     # ... extend here
   }
 
@@ -33,6 +34,7 @@ locals {
   policies_list = flatten([
     module.adhoc.access_list,
     module.ca.access_list,
+    module.kubernetes.access_list,
     # ... extend here
   ])
 
