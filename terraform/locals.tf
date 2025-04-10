@@ -26,6 +26,7 @@ locals {
     # Module outputs should be added:
     (module.ca.entry["accessor"])         = module.ca.entry,
     (module.kubernetes.entry["accessor"]) = module.kubernetes.entry,
+    (module.ssh.entry["accessor"])        = module.ssh.entry,
     # ... extend here
   }
 
@@ -35,6 +36,7 @@ locals {
     module.adhoc.access_list,
     module.ca.access_list,
     module.kubernetes.access_list,
+    module.ssh.access_list,
     # ... extend here
   ])
 

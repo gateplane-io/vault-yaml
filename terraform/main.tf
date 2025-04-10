@@ -8,6 +8,8 @@
 # Use, modification, and redistribution permitted under the terms of the license,
 # except for providing this software as a commercial service or product.
 
+# Authentication Methods
+
 module "ldap" {
   source      = "./modules/auth-methods/ldap"
   description = "Org LDAP Auth Method"
@@ -31,8 +33,12 @@ module "ldap" {
   authorizations = local.authorization["ldap"]
 }
 
+
+# Secrets Engines
 module "ca" {
   source = "./modules/secret-engines/pki"
+
+  accesses = local.accesses
 
   path        = "pki/org-ca"
   description = "The central CA of the Org"
@@ -44,20 +50,18 @@ module "ca" {
   templated_common_names = {
     email = "{{identity.entity.aliases.${local.auth_methods["ldap"]["accessor"]}.name}}@my-org.example.com"
   }
-
-  accesses = local.accesses
 }
+
 
 module "adhoc" {
   source = "./modules/adhoc-policies"
 
   role_directory = "../roles/vault"
+  accesses       = local.accesses
 
   # Maps used for templating policy documents
   auth_methods   = local.auth_methods
   secret_engines = local.secret_engines
-
-  accesses = local.accesses
 }
 
 
@@ -65,13 +69,25 @@ module "kubernetes" {
   source = "./modules/secret-engines/kubernetes"
 
   role_directory = "../roles/kubernetes"
+  accesses       = local.accesses
 
-  path            = "staging/cluster01"
-  description     = "Vault testing for K8s Cluster"
-  kubernetes_host = "https://127.0.0.1:6443"
+  path        = "staging/cluster01"
+  description = "Vault testing for K8s Cluster"
 
+  kubernetes_host     = "https://127.0.0.1:6443"
   service_account_jwt = var.kubernetes_token
   kubernetes_ca_cert  = var.kubernetes_ca
+}
+
+
+module "ssh" {
+  source = "./modules/secret-engines/ssh"
 
   accesses = local.accesses
+
+  path        = "staging/vms"
+  description = "Access Staging VM through SSH"
+
+  allowed_users = "{{identity.entity.aliases.${local.auth_methods["ldap"]["accessor"]}.name}}"
+  default_user  = "{{identity.entity.aliases.${local.auth_methods["ldap"]["accessor"]}.name}}"
 }
