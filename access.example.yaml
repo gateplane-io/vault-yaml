@@ -9,7 +9,7 @@ pki/org-ca:
     web:
       server_flag: true
       client_flag: false
-      ttl: 90d
+      ttl: 7776000 # Values like '90d' create drift
       organization: ["MyOrg"]
       country: ["US"]
       locality: ["LA"]
@@ -100,3 +100,29 @@ staging/cluster01:
         # with claims matching the middle part separated by comma
         - "cicd.environment=staging,branch=main.org/repository"
       namespaces: ["application"]
+
+# SSH CA
+
+# SSH CA Secrets Engine that signes temporary SSH keys
+# with SSH Extensions
+staging/vms:
+  type: ssh
+  roles:
+    developer:
+      access:
+        - "ldap.groups.Developers"
+      extensions:
+        # Only allow port-forwarding
+        # (no TTY, just tunnel traffic)
+        - permit-port-forwarding
+    admin:
+      access:
+        - "ldap.groups.Administrators"
+        - "ldap.users.jdoe"
+      extensions:
+        # All possible extensions
+        - permit-pty
+        - permit-port-forwarding
+        - permit-agent-forwarding
+        - permit-user-rc
+        - permit-X11-forwarding
