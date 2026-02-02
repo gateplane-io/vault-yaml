@@ -20,7 +20,7 @@ pki/org-ca:
       access:
         - "ldap.groups.CertificateAdministrators"
 
-  roles_conditional:
+  roles_conditional: # === WIP (currently unparsed) ===
     # This role can sign an employee's
     # user certificate for code signing or client auth
     client-generate:
@@ -48,28 +48,12 @@ pki/org-ca:
         approvers:
           - "ldap.groups.Onboarders"
           - "ldap.users.jdoe"
-
-# Ad-hoc Policies
-
-# The 'adhoc' block is used to directly create arbitrary
-# Vault Policies from template files located in a directory.
-adhoc:
-  type: vault
-  roles:
-    # Role names are the file names of the templates
-    secrets-personal:
-      access:
-        # This policy will be added to everyone
-        - "ldap.groups.Everyone"
-    secrets-group:
-      access:
-        # Every group will have a copy of this policy
-        - "ldap.groups.Administrators"
-        - "ldap.groups.Everyone"
-        - "ldap.groups.CertificateAdministrators"
-      # Create and attach a templated policy for each membership
-      # (and not one policy to all members)
-      for_each: true
+        # The number of minimum approvals
+        # needed to provide access
+        required_approvals: 2
+        # Whether to provide an explanation
+        # about why this kind of accessis requested
+        require_justification: false
 
 # Kubernetes
 
@@ -78,11 +62,13 @@ adhoc:
 staging/cluster01:
   type: kubernetes
   roles:
+    # 'admin' role as defined under /roles/kubernetes/admin.yaml
     admin:
       access:
         - "ldap.groups.KubernetesAdministrators"
         - "ldap.users.jdoe"
       namespaces: ["*"]
+      # A TTL of 10 minutes is the lowest possible for ServiceAccounts
       ttl: 600
       ttl_max: 3600
     # Developers can deploy to only 3 Namespaces
@@ -95,15 +81,15 @@ staging/cluster01:
         - playground
     bot-deploy:
       access:
+        # === WIP (currently unparsed) ===
         # This can be a GitHub Workflow
         # authenticated to vault through Github Token
-        # with claims matching the middle part separated by comma
-        - "cicd.environment=staging,branch=main.org/repository"
+        - "oidc.github-cicd.org/repository"
       namespaces: ["application"]
 
 # SSH CA
 
-# SSH CA Secrets Engine that signes temporary SSH keys
+# SSH CA Secrets Engine that signs temporary SSH keys
 # with SSH Extensions
 staging/vms:
   type: ssh
@@ -126,3 +112,26 @@ staging/vms:
         - permit-agent-forwarding
         - permit-user-rc
         - permit-X11-forwarding
+
+# ===============
+# Ad-hoc Policies
+
+# The 'adhoc' block is used to directly create arbitrary
+# Vault Policies from template files located under 'roles/vault'.
+adhoc:
+  type: vault
+  roles:
+    # Role names are the file names of the templates
+    secrets-personal:
+      access:
+        # This policy will be added to everyone
+        - "ldap.groups.Everyone"
+    secrets-group:
+      access:
+        # Every group will have a copy of this policy
+        - "ldap.groups.Administrators"
+        - "ldap.groups.Everyone"
+        - "ldap.groups.CertificateAdministrators"
+      # Create and attach a templated policy for each membership
+      # (and not one policy to all members)
+      for_each: true
