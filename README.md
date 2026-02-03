@@ -134,14 +134,20 @@ The LDAP group of `Developers`
 
 The LDAP user of `jdoe`
 
+* `identity.entity_id.f84a6248-b907-4119-bdd7-f47c8bf40bbf`
+
+The [Vault/OpenBao Identity](https://developer.hashicorp.com/vault/docs/concepts/identity#entity-policies) itself, regardless of their authentication method. Supported Principal types:
+  * `identity.entity_id.f84a6248-b907-4119-bdd7-f47c8bf40bbf`
+  * `identity.entity_name.entity_e13c9ca6`
+  * `identity.group_id.30210932-96a2-f3de-bc39-24e49d543832`
+  * `identity.group_name.InternalCertificateAdmins`.
+
+##### Note: Managing [`external` Vault/OpenBao Groups](https://developer.hashicorp.com/vault/docs/concepts/identity#external-vs-internal-groups) will cause Terraform drift.
+
 * `jwt.cicd.org/repo1` (`<auth-key>.<role>.<JWT sub>`) *(WIP)*
 
 The owner of a JWT received, passed to the
 JWT Auth Method under `cicd`, with its JWT `sub` claim equal to `org/repo1`
-
-* `id.entity.f84a6248-b907-4119-bdd7-f47c8bf40bbf` *(WIP)*
-
-The [Vault/OpenBao Entity](https://developer.hashicorp.com/vault/docs/concepts/identity#entity-policies) itself, regardless of their authentication method.
 
 ### `adhoc` - Ad-Hoc Vault Policies
 
