@@ -21,9 +21,6 @@ by managing secret engines, roles, policies, and access control in a human-reada
 This YAML schema is consumed by Terraform modules (under `/terraform/modules`).
 Example code is available under `/terraform`.
 
-*The Vault/OpenBao [Secrets Engines](https://developer.hashicorp.com/vault/docs/secrets) and [Auth Methods](https://developer.hashicorp.com/vault/docs/auth) referenced in the YAML need to be already defined.*
-This allows for integrating this configuration management into already provisioned Vault/OpenBao instances (and Terraform codebases).
-
 ## Top-level Structure
 The [`/access.example.yaml`](https://github.com/gateplane-io/vault-yaml/blob/main/access.example.yaml) file
 serves as showcase of the implemented features, and contains comments to guide through them.
