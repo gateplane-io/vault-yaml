@@ -14,6 +14,9 @@ locals {
   # Defined to be used when templating
   # 'adhoc' Vault Policies
   auth_methods = {
+    # The module.identity does not need to be added
+    # as Vault/OpenBao Templating can handle these entries internally:
+    # https://developer.hashicorp.com/vault/docs/concepts/policies#templated-policies
     (module.ldap.principal_key) : module.ldap.entry,
     # ... extend here
   }
@@ -44,6 +47,7 @@ locals {
 
   # Populates the output field
   authorizations = [
+    module.identity.authorizations,
     module.ldap.authorizations,
   ]
 }

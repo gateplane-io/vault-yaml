@@ -34,6 +34,14 @@ module "ldap" {
   principal_key = "ldap" # handles Principals starting with 'ldap'
 }
 
+# Handle Principals directly existing in Vault/OpenBao (Entities/Groups)
+module "identity" {
+  source = "./modules/auth-methods/identity"
+
+  policies_list = local.policies_list
+  principal_key = "identity" # handles Principals starting with 'identity'
+}
+
 
 # Secrets Engines
 module "ca" {

@@ -20,6 +20,14 @@ pki/org-ca:
       access:
         - "ldap.groups.CertificateAdministrators"
 
+        # Apart from users authenticated through LDAP
+        # Vault/OpenBao Entities and Groups can be directly used.
+        # // Using non-existent values WILL FAIL to apply
+        # - "identity.entity_id.8b3288a0-f887-17d6-7758-12cdcb6f0f7f"
+        # - "identity.entity_name.entity_e13c9ca6"
+        # - "identity.group_id.30210932-96a2-f3de-bc39-24e49d543832"
+        # - "identity.group_name.InternalCertificateAdmins"
+
   roles_conditional: # === WIP (currently unparsed) ===
     # This role can sign an employee's
     # user certificate for code signing or client auth
