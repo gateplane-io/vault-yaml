@@ -8,6 +8,10 @@
 # Use, modification, and redistribution permitted under the terms of the license,
 # except for providing this software as a commercial service or product.
 
+output "principal_key" {
+  value = var.principal_key
+}
+
 output "accessor" {
   value = vault_ldap_auth_backend.this.accessor
 }
@@ -20,5 +24,11 @@ output "entry" {
   value = {
     "accessor" : vault_ldap_auth_backend.this.accessor,
     "path" : vault_ldap_auth_backend.this.path,
+  }
+}
+
+output "authorizations" {
+  value = {
+    (var.principal_key) = local.authorizations
   }
 }

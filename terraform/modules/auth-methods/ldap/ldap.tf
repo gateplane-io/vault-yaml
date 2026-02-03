@@ -29,15 +29,15 @@ resource "vault_ldap_auth_backend" "this" {
 }
 
 resource "vault_ldap_auth_backend_group" "groups" {
-  for_each  = var.authorizations["groups"]
+  for_each  = local.authorizations["groups"]
   groupname = each.key
-  policies  = flatten([[], each.value["policies"]])
+  policies  = flatten([[], [for p in each.value["policies"] : lower(p)]])
   backend   = vault_ldap_auth_backend.this.path
 }
 
 resource "vault_ldap_auth_backend_user" "ldap" {
-  for_each = var.authorizations["users"]
+  for_each = local.authorizations["users"]
   username = each.key
-  policies = each.value["policies"]
+  policies = [for p in each.value["policies"] : lower(p)]
   backend  = vault_ldap_auth_backend.this.path
 }

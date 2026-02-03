@@ -30,7 +30,8 @@ module "ldap" {
   ldap_case_sensitive_names = false
   ldap_deny_null_bind       = true
 
-  authorizations = local.authorization["ldap"]
+  policies_list = local.policies_list
+  principal_key = "ldap" # handles Principals starting with 'ldap'
 }
 
 

@@ -9,7 +9,7 @@
 # except for providing this software as a commercial service or product.
 
 resource "vault_identity_group" "ldap" {
-  for_each = var.authorizations["groups"]
+  for_each = local.authorizations["groups"]
 
   name     = each.key
   type     = "external"
@@ -21,7 +21,7 @@ resource "vault_identity_group" "ldap" {
 }
 
 resource "vault_identity_group_alias" "ldap" {
-  for_each = var.authorizations["groups"]
+  for_each = local.authorizations["groups"]
 
   name           = each.key
   mount_accessor = vault_ldap_auth_backend.this.accessor

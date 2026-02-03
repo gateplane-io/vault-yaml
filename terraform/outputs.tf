@@ -8,10 +8,9 @@
 # Use, modification, and redistribution permitted under the terms of the license,
 # except for providing this software as a commercial service or product.
 
-output "authorization" {
-  value = local.authorization
+output "authorizations" {
+  value = local.authorizations
 }
-
 
 output "ssh_ca" {
   value = module.ssh.ssh_ca
