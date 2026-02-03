@@ -35,7 +35,7 @@ resource "vault_pki_secret_backend_root_cert" "this" {
 
 
 resource "vault_pki_secret_backend_role" "this" {
-  for_each = local.policies
+  for_each = local.policies_map
 
   backend    = vault_mount.this.path
   name       = each.value["role_name"]

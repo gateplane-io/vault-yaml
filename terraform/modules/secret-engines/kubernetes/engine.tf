@@ -23,7 +23,7 @@ resource "vault_kubernetes_secret_backend" "this" {
 
 
 resource "vault_kubernetes_secret_backend_role" "this" {
-  for_each = local.kubernetes_policies
+  for_each = local.all_policies
 
   backend                       = vault_kubernetes_secret_backend.this.path
   name                          = each.value["role_name"]
@@ -46,3 +46,29 @@ resource "vault_kubernetes_secret_backend_role" "this" {
 
   name_template = local.name_template
 }
+
+
+# resource "vault_kubernetes_secret_backend_role" "conditional" {
+#   for_each = true ? { for p in local.roles_list_conditional : p["key"] => p } : {}
+
+#   backend                       = vault_kubernetes_secret_backend.this.path
+#   name                          = each.value["role_name"]
+#   allowed_kubernetes_namespaces = sort(each.value["namespaces"])
+
+#   token_max_ttl     = each.value["ttl_max"]
+#   token_default_ttl = each.value["ttl"]
+
+#   kubernetes_role_type = contains(each.value["namespaces"], "*") ? "ClusterRole" : "Role"
+
+#   generated_role_rules = local.role_definitions[each.value["role_name"]]
+
+#   extra_labels = merge({
+#     # role_definition = "${var.repository_url}/blob/${local.git_commit_sha}/${var.roles_directory}/kubernetes/${each.value["role_name"]}.yaml",
+#     provisioned_for = var.name_prefix,
+#     generated_from  = vault_kubernetes_secret_backend.this.path,
+#     },
+#     var.kubernetes_labels
+#   )
+
+#   name_template = local.name_template
+# }

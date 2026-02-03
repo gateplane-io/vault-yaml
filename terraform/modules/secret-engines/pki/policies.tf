@@ -9,7 +9,7 @@
 # except for providing this software as a commercial service or product.
 
 data "vault_policy_document" "this" {
-  for_each = local.policies
+  for_each = local.policies_map
 
   rule {
     description = "Generate Certificate for '${each.value["role_name"]}' in '${each.value["resource_name"]}'"

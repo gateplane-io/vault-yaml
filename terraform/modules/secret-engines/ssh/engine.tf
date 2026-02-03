@@ -24,7 +24,7 @@ resource "vault_ssh_secret_backend_ca" "this" {
 
 resource "vault_ssh_secret_backend_role" "this" {
   for_each = {
-    for k, v in local.ssh_policies :
+    for k, v in local.policies_map :
     v["role_name"] => v if v["path"] == var.path
   }
 

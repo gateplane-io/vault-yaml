@@ -16,25 +16,12 @@ locals {
     path => accesses_values if accesses_values["type"] == "vault"
   }
 
-  # Inverse the access to "auth -> secrets"
-  adhoc_policies_list = flatten([
-    for path, values in local.adhoc : [
-      for role_name, role in values["roles"] : [
-        for access in role["access"] : {
-          "role_name" : role_name,
-          "key" : "${local.name_prefix}${role_name}-${element(split("/", path), -1)}${try(role["for_each"], false) ? "-${replace(access, ".", "-")}" : ""}",
-          "resource_name" : element(split("/", path), -1),
-          "access" : access,
-          "for_each" : try(role["for_each"], false),
-        }
-      ]
-    ]
-  ])
+  roles_list = module.parser.roles_list
 
   # Keep the data relevant for Vault Policies (remove accesses)
   adhoc_policies = {
     for k in distinct([
-      for l in local.adhoc_policies_list : merge([l, { "access" = null }]...)
+      for l in local.roles_list : merge([l, { "access" = null }]...)
     ]) : k["key"] => k
     if k["for_each"] == false
   }
@@ -42,7 +29,7 @@ locals {
   # Create a map with access as part of the key,
   # for roles that require new policy - per access
   adhoc_policies_for_each = {
-    for p in local.adhoc_policies_list :
+    for p in local.roles_list :
     p["key"] => p
     if p["for_each"] == true
   }

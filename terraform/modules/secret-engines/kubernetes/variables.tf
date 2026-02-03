@@ -14,6 +14,10 @@ variable "description" {}
 
 variable "path" {}
 
+variable "enable_conditional_roles" {
+  default = true
+}
+
 variable "service_account_jwt" {
   sensitive = true
 }

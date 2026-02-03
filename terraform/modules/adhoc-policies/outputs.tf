@@ -13,5 +13,5 @@ output "policies" {
 }
 
 output "access_list" {
-  value = local.adhoc_policies_list
+  value = local.roles_list
 }

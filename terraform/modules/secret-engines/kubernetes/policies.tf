@@ -8,8 +8,8 @@
 # Use, modification, and redistribution permitted under the terms of the license,
 # except for providing this software as a commercial service or product.
 
-data "vault_policy_document" "kubernetes" {
-  for_each = local.kubernetes_policies
+data "vault_policy_document" "this" {
+  for_each = local.all_policies
 
   rule {
     description = "Kubernetes access to role '${each.value["role_name"]}' in '${each.value["resource_name"]}', namespaces: [${join(",", each.value["namespaces"])}]"
@@ -23,8 +23,8 @@ data "vault_policy_document" "kubernetes" {
   }
 }
 
-resource "vault_policy" "kubernetes" {
-  for_each = data.vault_policy_document.kubernetes
+resource "vault_policy" "this" {
+  for_each = data.vault_policy_document.this
 
   name   = each.key
   policy = each.value.hcl

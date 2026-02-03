@@ -13,7 +13,7 @@ output "policies" {
 }
 
 output "access_list" {
-  value = local.policies_list
+  value = local.roles_list
 }
 
 output "entry" {

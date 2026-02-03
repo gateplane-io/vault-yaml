@@ -9,7 +9,7 @@
 # except for providing this software as a commercial service or product.
 
 data "vault_policy_document" "ssh" {
-  for_each = local.ssh_policies
+  for_each = local.policies_map
 
   rule {
     description = "SSH access to role '${each.value["role_name"]}' in '${each.value["resource_name"]}' CA"

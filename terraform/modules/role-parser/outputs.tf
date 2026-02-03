@@ -8,16 +8,12 @@
 # Use, modification, and redistribution permitted under the terms of the license,
 # except for providing this software as a commercial service or product.
 
-locals {
-  name_prefix = var.name_prefix == "" ? "" : "${var.name_prefix}-"
+output "roles_list" {
+  description = "List of roles extracted from both static and conditional roles with specified fields"
+  value       = local.roles_list
+}
 
-  selected = {
-    for path, accesses_values in var.accesses :
-    path => accesses_values
-    if accesses_values["type"] == "pki" && path == var.path
-  }
-
-  roles_list   = module.parser.roles_list
-  policies_map = module.parser.policies_map
-
+output "policies_map" {
+  description = "Map of Policies extracted from both static and conditional roles with specified fields"
+  value       = local.policies_map
 }

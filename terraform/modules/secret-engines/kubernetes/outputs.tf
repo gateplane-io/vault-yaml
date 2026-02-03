@@ -9,11 +9,12 @@
 # except for providing this software as a commercial service or product.
 
 output "policies" {
-  value = vault_policy.kubernetes
+  value = vault_policy.this
 }
 
 output "access_list" {
-  value = local.kubernetes_policies_list
+  value = local.roles_list //var.enable_conditional_roles ? flatten([local.roles_list_static, module.gateplane[0].policies_list]) :
+
 }
 
 output "entry" {

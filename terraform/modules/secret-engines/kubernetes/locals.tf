@@ -14,37 +14,8 @@ locals {
     trimsuffix(trimprefix(f, var.role_directory), ".yaml") => file("${var.role_directory}/${f}")
   }
 
-  name_prefix   = var.name_prefix == "" ? "" : "${var.name_prefix}-"
   name_template = var.name_prefix == "" ? var.name_template : "${var.name_prefix}-${var.name_template}"
 
-  kubernetes = {
-    for path, accesses_values in var.accesses :
-    path => accesses_values
-    if accesses_values["type"] == "kubernetes" && path == var.path
-  }
-
-  # Inverse the access to "auth -> secrets"
-  kubernetes_policies_list = flatten([
-    for path, values in local.kubernetes : [
-      for role_name, role in values["roles"] : [
-        for access in role["access"] : {
-          "path" : path,
-          "namespaces" : role["namespaces"],
-          "role_name" : role_name,
-          "key" : "${local.name_prefix}${values["type"]}-${role_name}-${element(split("/", path), -1)}",
-          "resource_name" : element(split("/", path), -1),
-          "access" : access,
-          "ttl" : try(role["ttl"], 10 * 60),
-          "ttl_max" : try(role["ttl_max"], 60 * 60),
-        }
-      ]
-    ]
-  ])
-
-  # Keep the data relevant for Vault Policies (remove accesses)
-  kubernetes_policies = {
-    for k in distinct([
-      for l in local.kubernetes_policies_list : merge([l, { "access" = null }]...)
-    ]) : k["key"] => k
-  }
+  roles_list   = module.parser.roles_list
+  all_policies = module.parser.policies_map
 }

@@ -1,0 +1,9 @@
+
+module "gateplane" {
+  source = "../../../modules/conditional-access"
+
+  name_prefix = var.name_prefix
+
+  accesses = local.selected
+  policies = vault_policy.this
+}

@@ -1,0 +1,10 @@
+
+module "gateplane" {
+  source = "../../../modules/conditional-access"
+
+  accesses = local.ssh
+
+  name_prefix = var.name_prefix
+
+  policies = vault_policy.ssh
+}

@@ -18,7 +18,8 @@ pki/org-ca:
         - dev.example.com
         - staging.example.com
       access:
-        - "ldap.groups.CertificateAdministrators"
+        static:
+          - "ldap.groups.CertificateAdministrators"
 
         # Apart from users authenticated through LDAP
         # Vault/OpenBao Entities and Groups can be directly used.
@@ -28,7 +29,6 @@ pki/org-ca:
         # - "identity.group_id.30210932-96a2-f3de-bc39-24e49d543832"
         # - "identity.group_name.InternalCertificateAdmins"
 
-  roles_conditional: # === WIP (currently unparsed) ===
     # This role can sign an employee's
     # user certificate for code signing or client auth
     client-generate:
@@ -47,21 +47,22 @@ pki/org-ca:
         - DigitalSignature
         - KeyEncipherment
       access:
-        # Everyone can request access for it,
-        # through PolicyGate plugin
-        requestors:
-          - "ldap.groups.Everyone"
-        # Only employee onboarders and John Doe
-        # can approve access to signing such certificates
-        approvers:
-          - "ldap.groups.Onboarders"
-          - "ldap.users.jdoe"
-        # The number of minimum approvals
-        # needed to provide access
-        required_approvals: 2
-        # Whether to provide an explanation
-        # about why this kind of accessis requested
-        require_justification: false
+        conditional:
+          # Everyone can request access for it,
+          # through PolicyGate plugin
+          requestors:
+            - "ldap.groups.Everyone"
+          # Only employee onboarders and John Doe
+          # can approve access to signing such certificates
+          approvers:
+            - "ldap.groups.Onboarders"
+            - "ldap.users.jdoe"
+          # The number of minimum approvals
+          # needed to provide access
+          required_approvals: 2
+          # Whether to provide an explanation
+          # about why this kind of accessis requested
+          require_justification: false
 
 # Kubernetes
 
@@ -72,47 +73,45 @@ staging/cluster01:
   roles:
     # 'admin' role as defined under /roles/kubernetes/admin.yaml
     admin:
-      access:
-        - "ldap.groups.KubernetesAdministrators"
-        - "ldap.users.jdoe"
       namespaces: ["*"]
       # A TTL of 10 minutes is the lowest possible for ServiceAccounts
       ttl: 600
       ttl_max: 3600
+      access:
+        static:
+          - "ldap.groups.KubernetesAdministrators"
+          - "ldap.users.jdoe"
+        conditional: # TODOOOOOOOOOOO
+          # Developers can also claim temporary access to 'admin' role
+          # (e.g for hotfixes, routine maintainance)
+          requestors:
+            - "ldap.groups.Developers"
+          # If approved by current administrators
+          # or by the Change Advisory Board (CAB)
+          approvers:
+            - "ldap.groups.KubernetesAdministrators"
+            - "ldap.users.jdoe"
+            - "ldap.groups.cab"
+          # Need to provide a reason for access,
+          # (e.g a ticket ID, Slack conversation link, etc)
+          require_justification: true
     # Developers can deploy to only 3 Namespaces
     deployer:
       access:
-        - "ldap.groups.Developers"
+        static:
+          - "ldap.groups.Developers"
       namespaces:
         - application
         - stress-test1
         - playground
     bot-deploy:
       access:
-        # === WIP (currently unparsed) ===
-        # This can be a GitHub Workflow
-        # authenticated to vault through Github Token
-        - "oidc.github-cicd.org/repository"
+        static:
+          # === WIP (currently unparsed) ===
+          # This can be a GitHub Workflow
+          # authenticated to vault through Github Token
+          - "oidc.github-cicd.org/repository"
       namespaces: ["application"]
-  roles_conditional:
-    admin:
-      namespaces: ["*"]
-      ttl: 600
-      ttl_max: 3600
-      access:
-        # Developers can also claim temporary access to 'admin' role
-        # (e.g for hotfixes, routine maintainance)
-        requestors:
-          - "ldap.groups.Developers"
-        # If approved by current administrators
-        # or by the Change Advisory Board (CAB)
-        approvers:
-          - "ldap.groups.KubernetesAdministrators"
-          - "ldap.users.jdoe"
-          - "ldap.groups.cab"
-        # Need to provide a reason for access,
-        # (e.g a ticket ID, Slack conversation link, etc)
-        require_justification: true
 
 # SSH CA
 
@@ -123,15 +122,17 @@ staging/vms:
   roles:
     developer:
       access:
-        - "ldap.groups.Developers"
+        static:
+          - "ldap.groups.Developers"
       extensions:
         # Only allow port-forwarding
         # (no TTY, just tunnel traffic)
         - permit-port-forwarding
     admin:
       access:
-        - "ldap.groups.Administrators"
-        - "ldap.users.jdoe"
+        static:
+          - "ldap.groups.Administrators"
+          - "ldap.users.jdoe"
       extensions:
         # All possible extensions
         - permit-pty
@@ -151,14 +152,16 @@ adhoc:
     # Role names are the file names of the templates
     secrets-personal:
       access:
-        # This policy will be added to everyone
-        - "ldap.groups.Everyone"
+        static:
+          # This policy will be added to everyone
+          - "ldap.groups.Everyone"
     secrets-group:
       access:
-        # Every group will have a copy of this policy
-        - "ldap.groups.Administrators"
-        - "ldap.groups.Everyone"
-        - "ldap.groups.CertificateAdministrators"
+        static:
+          # Every group will have a copy of this policy
+          - "ldap.groups.Administrators"
+          - "ldap.groups.Everyone"
+          - "ldap.groups.CertificateAdministrators"
       # Create and attach a templated policy for each membership
       # (and not one policy to all members)
       for_each: true
