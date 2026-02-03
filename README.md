@@ -126,25 +126,25 @@ that contain how one was authenticated along with identity information.
 
 #### Examples
 
-* `ldap.groups.Developers`
+* **Principals authenticated through LDAP**:
+  * `ldap.groups.Developers`
+  * `ldap.users.jdoe`
 
-The LDAP group of `Developers`
+These Principals are authenticated to Vault/OpenBao through LDAP
+and attain their Username and Group information from it.
 
-* `ldap.users.jdoe`
-
-The LDAP user of `jdoe`
-
-* `identity.entity_id.f84a6248-b907-4119-bdd7-f47c8bf40bbf`
-
-The [Vault/OpenBao Identity](https://developer.hashicorp.com/vault/docs/concepts/identity#entity-policies) itself, regardless of their authentication method. Supported Principal types:
+* **Principals existing as [Vault/OpenBao Identities](https://developer.hashicorp.com/vault/docs/concepts/identity#entity-policies)**:
   * `identity.entity_id.f84a6248-b907-4119-bdd7-f47c8bf40bbf`
   * `identity.entity_name.entity_e13c9ca6`
   * `identity.group_id.30210932-96a2-f3de-bc39-24e49d543832`
-  * `identity.group_name.InternalCertificateAdmins`.
+  * `identity.group_name.InternalAdmins`.
+
+These Principals can either by Entities or Groups stored in Vault/OpenBao, created either directly or [implicitly](https://developer.hashicorp.com/vault/docs/concepts/identity#implicit-entities) through an Auth Method.
 
 ##### Note: Managing [`external` Vault/OpenBao Groups](https://developer.hashicorp.com/vault/docs/concepts/identity#external-vs-internal-groups) will cause Terraform drift.
 
-* `jwt.cicd.org/repo1` (`<auth-key>.<role>.<JWT sub>`) *(WIP)*
+* **Principals attained from JWT** *(WIP)*:
+  * `jwt.cicd.org/repo1` (`<auth-key>.<role>.<JWT sub>`)
 
 The owner of a JWT received, passed to the
 JWT Auth Method under `cicd`, with its JWT `sub` claim equal to `org/repo1`
