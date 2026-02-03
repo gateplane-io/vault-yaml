@@ -14,15 +14,15 @@ and security-relevant options explicitly.
 
 ## Overview
 
-This repository defines Vault (or OpenBao) configuration using a declarative YAML format.
+This repository defines Vault/OpenBao configuration using a declarative YAML format.
 The goal is to solve the "*who has what access where*" problem,
 by managing secret engines, roles, policies, and access control in a human-readable, auditable way.
 
 This YAML schema is consumed by Terraform modules (under `/terraform/modules`).
 Example code is available under `/terraform`.
 
-*The Vault resources referenced in the YAML need to be already defined.*
-This allows for integrating this configuration management into existing configuration (and Terraform codebase).
+*The Vault/OpenBao [Secrets Engines](https://developer.hashicorp.com/vault/docs/secrets) and [Auth Methods](https://developer.hashicorp.com/vault/docs/auth) referenced in the YAML need to be already defined.*
+This allows for integrating this configuration management into already provisioned Vault/OpenBao instances (and Terraform codebases).
 
 ## Top-level Structure
 The [`/access.example.yaml`](https://github.com/gateplane-io/vault-yaml/blob/main/access.example.yaml) file
@@ -30,8 +30,8 @@ serves as showcase of the implemented features, and contains comments to guide t
 
 Each top-level key represents a logical Vault mount or feature group.
 ```yaml
-<path-or-logical-name>:
-  type: <engine-type>
+<path-or-logical-name>|adhoc:
+  type: kubernetes|pki|...
   roles: {...}
   roles_conditional: {...}
 ```
@@ -42,13 +42,17 @@ Defines the Vault engine or feature being configured.
 
 #### Supported examples:
 
+* `kubernetes` - [`terraform/modules/secret-engines/kubernetes`](https://github.com/gateplane-io/vault-yaml/tree/main/terraform/modules/secret-engines/kubernetes)
+
+
 * `pki` - [`terraform/modules/secret-engines/pki`](https://github.com/gateplane-io/vault-yaml/tree/main/terraform/modules/secret-engines/pki)
 
-Can be used for code signing, OpenVPN authentication, etc.
-* `kubernetes` - [`terraform/modules/secret-engines/kubernetes`](https://github.com/gateplane-io/vault-yaml/tree/main/terraform/modules/secret-engines/kubernetes)
+CA that generates/signs certificates to used for Code Signing, OpenVPN authentication, etc.
+
 * `ssh` [`terraform/modules/secret-engines/ssh`](https://github.com/gateplane-io/vault-yaml/tree/main/terraform/modules/secret-engines/ssh)
 
 Currently works with the [agent-less SSH CA method](https://developer.hashicorp.com/vault/docs/secrets/ssh/signed-ssh-certificates).
+
 * `vault` (policies only)
 
 Is used only by the `adhoc` key, to directly create templated Vault policies that do not adhere to secret engine use-cases.
@@ -76,7 +80,7 @@ These roles typically:
 * define permissions
 * are immediately usable
 
-Keys are mostly compatible with Terraform provider resources for each role: (e.g.: `allowed_domains`)
+Keys are mostly compatible with Terraform provider resources for each role: (e.g.: `allowed_domains` in [`pki_secret_backend_role`](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/pki_secret_backend_role))
 
 The `access` key is explained further below.
 
@@ -86,8 +90,8 @@ Defines roles that require approval or workflow before use.
 They are implemented through [GatePlane Policy Gate](https://github.com/gateplane-io/vault-plugins?tab=readme-ov-file#policy-gate).
 
 These roles:
-* are not directly usable
-* require request + approval
+* are claimable after consensus of approvers
+* require request + approvals
 * are intended for sensitive operations (e.g. admin roles)
 
 #### Example:
@@ -104,11 +108,13 @@ roles_conditional:
 
 ### The `access` block
 
-Defines who may use a role or policy.
+This block is used under `roles.<role_name>` and `roles_conditional.<role_name>` keys.
 
-* For `roles` it accepts a list of *Principals*.
+Defines who may use a Role or Conditional Role.
 
-* For `roles_conditional` it accepts a map.
+* For `roles` it accepts a *list* (`[]`) of *Principals*.
+
+* For `roles_conditional` it accepts a *map* (`{}`).
 
 The keys `requestors` and `approvers` each contain a list of *Principals*.
 Additionally, they `required_approvals` and `require_justification` are accepted.
@@ -116,7 +122,7 @@ Additionally, they `required_approvals` and `require_justification` are accepted
 ### Authentication and *Principals*:
 
 The way this configuration schema handles principals is through strings
-that contain how one was authenticated and statements that hold true for that principal.
+that contain how one was authenticated along with identity information.
 
 #### Examples
 
@@ -130,18 +136,23 @@ The LDAP user of `jdoe`
 
 * `jwt.cicd.org/repo1` (`<auth-key>.<role>.<JWT sub>`) *(WIP)*
 
-The owner of the JWT received from a JWT Auth Method, authenticated against the
-JWT role `cicd` with its JWT `sub` claim equal to `org/repo1`
+The owner of a JWT received, passed to the
+JWT Auth Method under `cicd`, with its JWT `sub` claim equal to `org/repo1`
+
+* `id.entity.f84a6248-b907-4119-bdd7-f47c8bf40bbf` *(WIP)*
+
+The [Vault/OpenBao Entity](https://developer.hashicorp.com/vault/docs/concepts/identity#entity-policies) itself, regardless of their authentication method.
 
 ### `adhoc` - Ad-Hoc Vault Policies
 
-The `adhoc` section defines arbitrary Vault policies that are not tied to any specific secret engine.
+The `adhoc` section defines arbitrary Vault/OpenBao policies that are not tied to any specific Secrets Engine.
 
-Policies are generated from template files and attached to users or groups.
+Policies are generated from template files and attached to principals.
 
 #### Example:
 ```yaml
 adhoc:
+  type: vault
   roles:
     secrets-personal:
       access:

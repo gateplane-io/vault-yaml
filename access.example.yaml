@@ -86,6 +86,25 @@ staging/cluster01:
         # authenticated to vault through Github Token
         - "oidc.github-cicd.org/repository"
       namespaces: ["application"]
+  roles_conditional:
+    admin:
+      namespaces: ["*"]
+      ttl: 600
+      ttl_max: 3600
+      access:
+        # Developers can also claim temporary access to 'admin' role
+        # (e.g for hotfixes, routine maintainance)
+        requestors:
+          - "ldap.groups.Developers"
+        # If approved by current administrators
+        # or by the Change Advisory Board (CAB)
+        approvers:
+          - "ldap.groups.KubernetesAdministrators"
+          - "ldap.users.jdoe"
+          - "ldap.groups.cab"
+        # Need to provide a reason for access,
+        # (e.g a ticket ID, Slack conversation link, etc)
+        require_justification: true
 
 # SSH CA
 
