@@ -30,7 +30,6 @@ Each top-level key represents a logical Vault mount or feature group.
 <path-or-logical-name>|adhoc:
   type: kubernetes|pki|...
   roles: {...}
-  roles_conditional: {...}
 ```
 
 ### `type`
@@ -58,7 +57,7 @@ Is used only by the `adhoc` key, to directly create templated Vault policies tha
 
 ### `roles`
 
-Defines static roles that map directly to Vault Secret Engine roles.
+Defines roles that map directly to Vault Secret Engine roles.
 
 ####  Example:
 
@@ -81,40 +80,91 @@ Keys are mostly compatible with Terraform provider resources for each role: (e.g
 
 The `access` key is explained further below.
 
-### `roles_conditional` *(WIP)*
+### Static and Conditional Access
 
-Defines roles that require approval or workflow before use.
-They are implemented through [GatePlane Policy Gate](https://github.com/gateplane-io/vault-plugins?tab=readme-ov-file#policy-gate).
+Roles can define both static and conditional access.
+Conditional access requires approval before use and is implemented through [GatePlane Policy Gate](https://github.com/gateplane-io/vault-plugins?tab=readme-ov-file#policy-gate).
 
-These roles:
-* are claimable after consensus of approvers
-* require request + approvals
-* are intended for sensitive operations (e.g. admin roles)
+Conditional access is used for sensitive operations where:
+* access must be requested and approved
+* multiple approvers may be required
+* justification must be provided
+* temporary access is sufficient (e.g. for hotfixes, maintenance)
+
+A role can have both `static` and `conditional` access defined simultaneously.
 
 #### Example:
 A case where a user certificate must be generated/issued (only) when onboarding
 a new member. Generation has to be approved by an individual onboarder.
 
 ```yaml
-roles_conditional:
+roles:
   client-generate:
+    client_flag: true
+    ttl: 31536000
     access:
-      requestors: ["ldap.groups.Everyone"]
-      approvers: ["ldap.groups.Onboarders"]
+      conditional:
+        requestors:
+          - "ldap.groups.Everyone"
+        approvers:
+          - "ldap.groups.Onboarders"
+        required_approvals: 1
+        require_justification: false
 ```
+
 
 ### The `access` block
 
-This block is used under `roles.<role_name>` and `roles_conditional.<role_name>` keys.
+This block is used under `roles.<role_name>` keys to define who may use a role.
 
-Defines who may use a Role or Conditional Role.
+The `access` block accepts two optional sub-blocks:
 
-* For `roles` it accepts a *list* (`[]`) of *Principals*.
+#### `static`
+Defines principals with immediate, permanent access to the role.
+Accepts a *list* (`[]`) of *Principals*.
 
-* For `roles_conditional` it accepts a *map* (`{}`).
+```yaml
+access:
+  static:
+    - "ldap.groups.Administrators"
+    - "ldap.users.jdoe"
+```
 
-The keys `requestors` and `approvers` each contain a list of *Principals*.
-Additionally, they `required_approvals` and `require_justification` are accepted.
+#### `conditional`
+Defines access that requires approval before being granted. Accepts a *map* (`{}`) with the following keys:
+
+* `requestors`: List of principals who can request access
+* `approvers`: List of principals who can approve access
+* `required_approvals`: (Optional, default: 1) Minimum number of approvals needed
+* `require_justification`: (Optional, default: false) Whether requestors must provide a reason
+
+```yaml
+access:
+  conditional:
+    requestors:
+      - "ldap.groups.Developers"
+    approvers:
+      - "ldap.groups.KubernetesAdministrators"
+      - "ldap.groups.cab"
+    required_approvals: 2
+    require_justification: true
+```
+
+A role can have both `static` and `conditional` access defined:
+
+```yaml
+access:
+  static:
+    - "ldap.groups.Administrators"
+  conditional:
+    requestors:
+      - "ldap.groups.Developers"
+    approvers:
+      - "ldap.groups.Administrators"
+    required_approvals: 1
+    require_justification: true
+```
+
 
 ### Authentication and *Principals*:
 
@@ -159,7 +209,8 @@ adhoc:
   roles:
     secrets-personal:
       access:
-        - ldap.groups.Everyone
+        static:
+          - ldap.groups.Everyone
 ```
 
 The Policy is templated from [`roles/vault/secrets-personal.hcl`](https://github.com/gateplane-io/vault-yaml/blob/main/roles/vault/secrets-personal.hcl)
