@@ -21,14 +21,14 @@ locals {
     if path == var.path
   }
 
-  roles_list = flatten([
+  static_roles_list = flatten([
     for path, values in local.accesses : [
       for role_name, role in values["roles"] : flatten([
         [for access in role["access"]["static"] : merge(
           {
             "path" : path,
             "role_name" : role_name,
-            "key" : "${local.name_prefix}${values["type"]}-${role_name}-${element(split("/", path), -1)}-${try(role["for_each"], false) ? split(".", access)[2] : ""}",
+            "key" : "${local.name_prefix}${values["type"]}-${role_name}-${element(split("/", path), -1)}${try(role["for_each"], false) ? "-${split(".", access)[2]}" : ""}",
             "resource_name" : element(split("/", path), -1),
             "access" : access,
           },
@@ -42,11 +42,15 @@ locals {
     if try(length(values["roles"]) != 0, false)
   ])
 
+  roles_list = flatten([local.static_roles_list, local.conditional_roles_list])
   # Keep the data relevant for Vault Policies (remove accesses)
   policies_map = {
     for k in distinct([
-      for l in local.roles_list : merge([l, {
-        "access" = null,
+      for l in flatten([local.roles_list, local.conditional_roles_list]) : merge([l, {
+        "access"             = null,
+        "access_requestors"  = null,
+        "access_approvers"   = null,
+        "access_conditional" = null,
       }]...)
     ]) : k["key"] => k
   }

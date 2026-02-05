@@ -29,3 +29,7 @@ variable "name_prefix" {
 variable "allowed_users" {}
 
 variable "default_user" {}
+
+variable "enable_conditional_roles" {
+  default = true
+}

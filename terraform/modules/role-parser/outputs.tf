@@ -8,6 +8,16 @@
 # Use, modification, and redistribution permitted under the terms of the license,
 # except for providing this software as a commercial service or product.
 
+output "roles_list_conditional" {
+  description = "List of roles extracted from both static and conditional roles with specified fields"
+  value       = local.conditional_roles_list
+}
+
+output "roles_list_static" {
+  description = "List of roles extracted from both static and conditional roles with specified fields"
+  value       = local.static_roles_list
+}
+
 output "roles_list" {
   description = "List of roles extracted from both static and conditional roles with specified fields"
   value       = local.roles_list

@@ -13,7 +13,7 @@ output "policies" {
 }
 
 output "access_list" {
-  value = local.roles_list
+  value = flatten([local.roles_list, try(module.gateplane[0].access_list, [])])
 }
 
 output "entry" {

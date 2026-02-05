@@ -33,7 +33,7 @@ pki/org-ca:
     # user certificate for code signing or client auth
     client-generate:
       client_flag: true
-      ttl: 365d
+      ttl: 31536000 # 365d
       organization: ["MyOrg"]
       country: ["US"]
       locality: ["LA"]

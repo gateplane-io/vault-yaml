@@ -17,7 +17,7 @@ locals {
     if accesses_values["type"] == "pki" && path == var.path
   }
 
-  roles_list   = module.parser.roles_list
+  roles_list   = module.parser.roles_list_static
   policies_map = module.parser.policies_map
 
 }

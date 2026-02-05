@@ -35,3 +35,7 @@ variable "accesses" {}
 variable "name_prefix" {
   default = ""
 }
+
+variable "enable_conditional_roles" {
+  default = true
+}

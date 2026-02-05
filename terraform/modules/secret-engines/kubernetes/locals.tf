@@ -16,6 +16,6 @@ locals {
 
   name_template = var.name_prefix == "" ? var.name_template : "${var.name_prefix}-${var.name_template}"
 
-  roles_list   = module.parser.roles_list
+  roles_list   = module.parser.roles_list_static
   all_policies = module.parser.policies_map
 }

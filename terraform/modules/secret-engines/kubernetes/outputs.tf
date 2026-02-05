@@ -13,8 +13,7 @@ output "policies" {
 }
 
 output "access_list" {
-  value = local.roles_list //var.enable_conditional_roles ? flatten([local.roles_list_static, module.gateplane[0].policies_list]) :
-
+  value = flatten([local.roles_list, try(module.gateplane[0].access_list, [])])
 }
 
 output "entry" {

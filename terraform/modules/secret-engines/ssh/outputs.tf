@@ -9,16 +9,11 @@
 # except for providing this software as a commercial service or product.
 
 output "policies" {
-  value = vault_policy.ssh
+  value = vault_policy.this
 }
 
 output "access_list" {
-  value = local.roles_list
-
-}
-
-output "ssh_ca" {
-  value = vault_ssh_secret_backend_ca.this.public_key
+  value = flatten([local.roles_list, try(module.gateplane[0].access_list, [])])
 }
 
 output "entry" {
@@ -26,4 +21,8 @@ output "entry" {
     "path"     = vault_mount.this.path,
     "accessor" = vault_mount.this.accessor,
   }
+}
+
+output "ssh_ca" {
+  value = vault_ssh_secret_backend_ca.this.public_key
 }

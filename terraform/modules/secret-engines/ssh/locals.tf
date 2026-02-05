@@ -11,7 +11,7 @@
 locals {
   name_prefix = var.name_prefix == "" ? "" : "${var.name_prefix}-"
 
-  roles_list   = module.parser.roles_list
+  roles_list   = module.parser.roles_list_static
   policies_map = module.parser.policies_map
 
 }
