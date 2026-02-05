@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=./schema.json
 # Vault/OpenBao YAML Configuration
 
 # PKI Secrets Engine to store an Org's CA

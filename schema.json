@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Vault YAML Access Schema",
+  "type": "object",
+  "additionalProperties": {
+    "oneOf": [
+      { "$ref": "#/definitions/engineUnit" },
+      { "$ref": "#/definitions/adhocBlock" }
+    ]
+  },
+
+  "definitions": {
+    "engineUnit": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["pki", "kubernetes", "ssh"]
+        },
+        "roles": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/definitions/role" }
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "adhocBlock": {
+      "type": "object",
+      "required": ["type", "roles"],
+      "properties": {
+        "type": { "const": "vault" },
+        "roles": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/definitions/adhocRole" }
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "role": {
+      "type": "object",
+      "properties": {
+        "access": {
+          "type": "object",
+          "properties": {
+            "static": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "conditional": {
+              "$ref": "#/definitions/conditionalAccess"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": true
+    },
+
+    "conditionalAccess": {
+      "type": "object",
+      "properties": {
+        "requestors": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "approvers": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "require_justification": { "type": "boolean" },
+        "required_approvals": { "type": "integer" }
+      },
+      "required": ["requestors", "approvers"],
+      "additionalProperties": false
+    },
+
+    "adhocRole": {
+      "type": "object",
+      "required": ["access"],
+      "properties": {
+        "access": {
+          "type": "object",
+          "properties": {
+            "static": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          },
+          "additionalProperties": false,
+          "required": ["static"]
+        },
+        "for_each": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    }
+  }
+}
