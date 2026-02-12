@@ -2,6 +2,7 @@
 
 *Vault/OpenBao configuration for mere humans*
 
+
 ## Problem statement
 
 Configuring Vault/OpenBao at scale is *complex and opaque*.
@@ -12,52 +13,106 @@ This project distills GatePlane’s operational experience with Vault/OpenBao
 into a single, declarative configuration format that surfaces the most common
 and security-relevant options explicitly.
 
+
 ## Overview
 
-This repository defines Vault/OpenBao configuration using a declarative YAML format.
-The goal is to solve the "*who has what access where*" problem,
-by managing secret engines, roles, policies, and access control in a human-readable, auditable way.
+This project provides a declarative YAML format for configuring Vault and OpenBao that focuses on solving the critical security question: **"who has what access to what?"**
 
-This YAML schema is consumed by Terraform modules (under `/terraform/modules`).
-Example code is available under `/terraform`.
+By defining secret engines, roles, policies, and access control in a single, human-readable YAML file, you get:
+
+- **Simplified configuration** – Only the most common and security-relevant options are exposed explicitly
+- **Auditable access control** – Clear visibility into who can access which resources
+- **Reduced complexity** – Avoid the steep learning curve and many configuration paths of native Vault
+- **GitOps-friendly** – Version control your entire access model alongside your infrastructure
+
+The YAML schema is consumed by Terraform modules located in `/terraform/modules`, with working examples available in `/terraform`.
+
+## Table of Contents
+
+<!--TOC-->
+
+- [Problem statement](#problem-statement)
+- [Overview](#overview)
+- [Table of Contents](#table-of-contents)
+- [Top-level Structure](#top-level-structure)
+  - [`type`](#type)
+    - [Supported examples](#supported-examples)
+  - [`roles`](#roles)
+    - [Example:](#example)
+  - [Static and Conditional Access](#static-and-conditional-access)
+    - [Example: Conditional access for user onboarding (certificate generation)](#example-conditional-access-for-user-onboarding-certificate-generation)
+  - [The `access` block](#the-access-block)
+    - [`static`](#static)
+    - [`conditional`](#conditional)
+  - [Authentication and *Principals*](#authentication-and-principals)
+    - [Supported principal formats](#supported-principal-formats)
+  - [`adhoc` - Ad-Hoc Vault Policies](#adhoc---ad-hoc-vault-policies)
+    - [How it works](#how-it-works)
+    - [Example:](#example-1)
+    - [Template variables](#template-variables)
+- [Getting Started](#getting-started)
+  - [Prerequisites](#prerequisites)
+  - [Starting fresh](#starting-fresh)
+  - [Bring Your Own Vault (BYOV)](#bring-your-own-vault-byov)
+    - [Gradual Migration](#gradual-migration)
+    - [How it works](#how-it-works-1)
+    - [Example](#example-2)
+  - [What `vault-yaml` manages](#what-vault-yaml-manages)
+- [License](#license)
+
+<!--TOC-->
 
 ## Top-level Structure
-The [`/access.example.yaml`](https://github.com/gateplane-io/vault-yaml/blob/main/access.example.yaml) file
-serves as showcase of the implemented features, and contains comments to guide through them.
+The [`/access.example.yaml`](https://github.com/gateplane-io/vault-yaml/blob/main/access.example.yaml) file demonstrates all supported features with inline comments to guide you through them.
 
-Each top-level key represents a logical Vault mount or feature group.
+Each top-level key represents a logical Vault mount (secrets engine) or feature group:
+
 ```yaml
-<path-or-logical-name>|adhoc:
-  type: kubernetes|pki|...
+<pki-engine-path>:
+  type: pki
+  roles: {...}
+
+<kubernetes-engine-path>:
+  type: kubernetes
+  roles: {...}
+
+adhoc:
+  type: vault
   roles: {...}
 ```
+
+The key itself is the **mount path** in Vault (e.g., `pki`, `kubernetes`, or a custom path like `ssh/signer`). The special `adhoc` key is reserved for Vault policies not tied to any secrets engine.
 
 ### `type`
 
 Defines the Vault engine or feature being configured.
 
-#### Supported examples:
+#### Supported examples
 
-* `kubernetes` - [`terraform/modules/secret-engines/kubernetes`](https://github.com/gateplane-io/vault-yaml/tree/main/terraform/modules/secret-engines/kubernetes)
+* `kubernetes` - [`terraform/modules/secret-engines/kubernetes`](https://github.com/gateplane-io/vault-yaml/tree/main/terraform/modules/secrets-engines/kubernetes)
 
 
-* `pki` - [`terraform/modules/secret-engines/pki`](https://github.com/gateplane-io/vault-yaml/tree/main/terraform/modules/secret-engines/pki)
+* `pki` - [`terraform/modules/secret-engines/pki`](https://github.com/gateplane-io/vault-yaml/tree/main/terraform/modules/secrets-engines/pki)
 
 CA that generates/signs certificates to used for Code Signing, OpenVPN authentication, etc.
 
-* `ssh` [`terraform/modules/secret-engines/ssh`](https://github.com/gateplane-io/vault-yaml/tree/main/terraform/modules/secret-engines/ssh)
+* `ssh` [`terraform/modules/secret-engines/ssh`](https://github.com/gateplane-io/vault-yaml/tree/main/terraform/modules/secrets-engines/ssh)
 
 Currently works with the [agent-less SSH CA method](https://developer.hashicorp.com/vault/docs/secrets/ssh/signed-ssh-certificates).
 
-* `vault` (policies only)
+* `vault` [`terraform/modules/secret-engines/vault`](https://github.com/gateplane-io/vault-yaml/tree/main/terraform/modules/secrets-engines/vault) (policies only)
 
 Is used only by the `adhoc` key, to directly create templated Vault policies that do not adhere to secret engine use-cases.
 
-##### Each type contains a set of pre-configured Policies, that are generated for each role and automatically attached to the referenced principals for that role.
+* *more to come (AWS, GCP, Azure, Databases, etc)*
+
+##### Policy generation
+
+For each role defined in your YAML, `vault-yaml` automatically generates appropriate policies based on each secrets engine's use case of credential generation. These policies are then attached to all principals referenced in the role's `access` block.
 
 ### `roles`
 
-Defines roles that map directly to Vault Secret Engine roles.
+Defines roles that map directly to Vault/OpenBao Secret Engine roles.
 
 ####  Example:
 
@@ -70,32 +125,32 @@ roles:
     access: [...]
 ```
 
-These roles typically:
+Roles serve two purposes:
 
-* issue credentials
-* define permissions
-* are immediately usable
+1. **Vault configuration**: They configure the underlying Vault secret engine role (e.g., setting TTL, allowed domains, certificate parameters)
+2. **Access control**: They define who can use this role through the `access` block
 
-Keys are mostly compatible with Terraform provider resources for each role: (e.g.: `allowed_domains` in [`pki_secret_backend_role`](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/pki_secret_backend_role))
+The keys you define in a role (e.g., `ttl`, `allowed_domains`) map directly to the corresponding Vault Terraform provider resource for that secret engine type. For example, `allowed_domains` corresponds to the same field in [`pki_secret_backend_role`](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/pki_secret_backend_role).
 
 The `access` key is explained further below.
 
 ### Static and Conditional Access
 
-Roles can define both static and conditional access.
-Conditional access requires approval before use and is implemented through [GatePlane Policy Gate](https://github.com/gateplane-io/vault-plugins?tab=readme-ov-file#policy-gate).
+Roles can define both static and conditional access:
 
-Conditional access is used for sensitive operations where:
-* access must be requested and approved
-* multiple approvers may be required
-* justification must be provided
-* temporary access is sufficient (e.g. for hotfixes, maintenance)
+- **Static access**: Principals have immediate, permanent access to use the role. No approval is required.
 
-A role can have both `static` and `conditional` access defined simultaneously.
+- **Conditional access**: Principals must request access and receive approval before using the role. This is implemented through the [GatePlane Policy Gate](https://github.com/gateplane-io/vault-plugins?tab=readme-ov-file#policy-gate) plugin and is ideal for:
+  - Sensitive operations requiring oversight
+  - Multi-person approval workflows
+  - Situations requiring justification documentation
+  - Temporary access scenarios (hotfixes, maintenance, onboarding)
 
-#### Example:
-A case where a user certificate must be generated/issued (only) when onboarding
-a new member. Generation has to be approved by an individual onboarder.
+You can define both `static` and `conditional` access on the same role, allowing different levels of access for different users.
+
+#### Example: Conditional access for user onboarding (certificate generation)
+
+In this example, anyone can request a client certificate, but it must be approved by an Onboarder before being issued:
 
 ```yaml
 roles:
@@ -115,13 +170,16 @@ roles:
 
 ### The `access` block
 
-This block is used under `roles.<role_name>` keys to define who may use a role.
-
-The `access` block accepts two optional sub-blocks:
+The `access` block is defined under each role to control who may use that role. It accepts two optional sub-blocks:
 
 #### `static`
-Defines principals with immediate, permanent access to the role.
-Accepts a *list* (`[]`) of *Principals*.
+
+Grants immediate, permanent access to principals without requiring approval. Accepts a *list* (`[]`) of principal strings.
+
+Use this for:
+- Automated systems that need constant access
+- Teams that require ongoing access to resources
+- Operations that don't need oversight
 
 ```yaml
 access:
@@ -131,12 +189,19 @@ access:
 ```
 
 #### `conditional`
-Defines access that requires approval before being granted. Accepts a *map* (`{}`) with the following keys:
 
-* `requestors`: List of principals who can request access
-* `approvers`: List of principals who can approve access
-* `required_approvals`: (Optional, default: 1) Minimum number of approvals needed
-* `require_justification`: (Optional, default: false) Whether requestors must provide a reason
+Requires approval before access is granted. Accepts a *map* (`{}`) with the following keys:
+
+- `requestors`: List of principals who can submit access requests
+- `approvers`: List of principals who can approve requests
+- `required_approvals` *(optional, default: 1)*: Minimum number of approvals required
+- `require_justification` *(optional, default: false)*: Whether requestors must provide a reason
+
+Use this for:
+- Production break-glass scenarios
+- Temporary elevated privileges
+- Security-sensitive operations
+- Audit trail requirements
 
 ```yaml
 access:
@@ -166,41 +231,52 @@ access:
 ```
 
 
-### Authentication and *Principals*:
+### Authentication and *Principals*
 
-The way this configuration schema handles principals is through strings
-that contain how one was authenticated along with identity information.
+Principals are represented as strings that combine the authentication method with the identity. This format tells `vault-yaml` **how** the user authenticates and **who** they are.
 
-#### Examples
+#### Supported principal formats
 
-* **Principals authenticated through LDAP**:
-  * `ldap.groups.Developers`
-  * `ldap.users.jdoe`
+**1. LDAP authentication**
 
-These Principals are authenticated to Vault/OpenBao through LDAP
-and attain their Username and Group information from it.
+Format: `ldap.groups.<group-name>` or `ldap.users.<username>`
 
-* **Principals existing as [Vault/OpenBao Identities](https://developer.hashicorp.com/vault/docs/concepts/identity#entity-policies)**:
-  * `identity.entity_id.f84a6248-b907-4119-bdd7-f47c8bf40bbf`
-  * `identity.entity_name.entity_e13c9ca6`
-  * `identity.group_id.30210932-96a2-f3de-bc39-24e49d543832`
-  * `identity.group_name.InternalAdmins`.
+These principals are authenticated through your configured LDAP auth method. The user's username and group membership are pulled directly from your LDAP directory.
 
-These Principals can either by Entities or Groups stored in Vault/OpenBao, created either directly or [implicitly](https://developer.hashicorp.com/vault/docs/concepts/identity#implicit-entities) through an Auth Method.
+Examples:
+- `ldap.groups.Developers`
+- `ldap.users.jdoe`
 
-##### Note: Managing [`external` Vault/OpenBao Groups](https://developer.hashicorp.com/vault/docs/concepts/identity#external-vs-internal-groups) will cause Terraform drift.
+**2. Vault/OpenBao identities**
 
-* **Principals attained from JWT** *(WIP)*:
-  * `jwt.cicd.org/repo1` (`<auth-key>.<role>.<JWT sub>`)
+Format: `identity.entity_id.<id>` or `identity.entity_name.<name>` or `identity.group_id.<id>` or `identity.group_name.<name>`
 
-The owner of a JWT received, passed to the
-JWT Auth Method under `cicd`, with its JWT `sub` claim equal to `org/repo1`
+These principals reference entities or groups stored in Vault/OpenBao's identity system. They can be created manually or automatically through auth methods.
+
+Examples:
+- `identity.entity_id.f84a6248-b907-4119-bdd7-f47c8bf40bbf`
+- `identity.entity_name.entity_e13c9ca6`
+- `identity.group_id.30210932-96a2-f3de-bc39-24e49d543832`
+- `identity.group_name.InternalAdmins`
+
+> **Note:** Avoid managing [external Vault groups](https://developer.hashicorp.com/vault/docs/concepts/identity#external-vs-internal-groups) with `vault-yaml`, as this can cause Terraform drift issues.
+
+**3. JWT authentication** *(Work in Progress)*
+
+Format: `jwt.<role>.<jwt-sub>`
+
+Used for CI/CD pipelines and service accounts authenticating via JWT.
+
+Example:
+- `jwt.cicd.org/repo1` - Matches JWT `sub` claim `org/repo1` from the JWT auth mount with role `cicd`
 
 ### `adhoc` - Ad-Hoc Vault Policies
 
-The `adhoc` section defines arbitrary Vault/OpenBao policies that are not tied to any specific Secrets Engine.
+The `adhoc` section defines custom Vault/OpenBao policies that aren't tied to any specific Secrets Engine. Use this when you need fine-grained control over paths and capabilities that don't fit into the standard secret engine role model.
 
-Policies are generated from template files and attached to principals.
+#### How it works
+
+Each role in the `adhoc` section references a **policy template file** (`.hcl`) that contains the actual Vault policy rules. The template can reference variables for dynamic path generation.
 
 #### Example:
 ```yaml
@@ -213,10 +289,115 @@ adhoc:
           - ldap.groups.Everyone
 ```
 
-The Policy is templated from [`roles/vault/secrets-personal.hcl`](https://github.com/gateplane-io/vault-yaml/blob/main/roles/vault/secrets-personal.hcl)
+This configuration creates a policy from the template file [`roles/vault/secrets-personal.hcl`](https://github.com/gateplane-io/vault-yaml/blob/main/roles/vault/secrets-personal.hcl) and attaches it to all users in the `Everyone` LDAP group.
 
-The `secret_engines` and `auth_methods` maps are available to be used by the templates.
+#### Template variables
 
+Your policy templates can access these pre-defined variables:
+- **`secrets_engines`** - A map of all configured secret engines and their mount paths
+- **`auth_methods`** - A map of all configured auth methods and their mount paths
+
+This lets you write policies that dynamically reference your infrastructure without hardcoding paths.
+
+For example, in a template:
+```hcl
+# The 'secrets_engines' parameter is templated by Terraform
+# The {{ identity.entity.name }} directive is templated by Vault/OpenBao
+path "${secrets_engines["kv"]["path"]}/data/users/{{ identity.entity.name }}" {
+  capabilities = ["create", "read", "update", "delete"]
+}
+```
+
+See [`terraform/main.tf#L66`](https://github.com/gateplane-io/vault-yaml/blob/main/terraform/main.tf#L66) for how these maps are constructed.
+
+## Getting Started
+
+### Prerequisites
+
+Before using vault-yaml, ensure you have:
+
+- **Terraform** (v1.0+) installed and configured
+- **Vault or OpenBao** server running and accessible
+- **Terraform Vault provider** configured with authentication to your Vault/OpenBao instance
+- Basic understanding of Vault concepts (secret engines, auth methods, policies)
+
+### Starting fresh
+
+If you're setting up a new Vault/OpenBao instance:
+
+1. **Create a Vault/OpenBao instance** using the [Hashicorp official Terraform provider](https://registry.terraform.io/providers/hashicorp/vault/latest).
+
+2. **Configure authentication and secrets engines** using Terraform resources. For example:
+   - Mount a secrets engine: [`vault_mount`](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/mount)
+   - Add Kubernetes integration: [`vault_kubernetes_secret_backend`](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/kubernetes_secret_backend)
+   - Configure LDAP authentication: [`vault_ldap_auth_backend`](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/ldap_auth_backend)
+
+3. **Connect your mounts to `vault-yaml` modules** by passing the mount path to the appropriate modules in `terraform/modules/secrets-engines` or `terraform/modules/auth-methods`. See [`main.tf`](https://github.com/gateplane-io/vault-yaml/blob/main/terraform/main.tf#L34) for a complete example.
+
+### Bring Your Own Vault (BYOV)
+
+You can use vault-yaml with **existing Vault/OpenBao instances** - without replacing or disrupting your current configuration.
+
+In this repository, the separation between `vault-yaml` and BYOV resources can be seen under `terraform/` directory. The `byov.tf` files are meant to pre-date the `vault-yaml` files (`main.tf`, `gateplane.tf`)
+
+#### Gradual Migration
+
+`vault-yaml` works alongside your existing setup:
+
+- **Existing roles and policies are preserved** - `vault-yaml` does not delete or modify your existing configuration (`terraform plan` will fail if resources with the same name exist)
+- **New resources are added incrementally** - your `accesses.yaml` file provisions new roles and policies defined in the YAML
+- **No disruption to existing workflows** - your current operations continue uninterrupted
+
+#### How it works
+
+Simply reference your existing Secrets Engines and Auth Methods when configuring `vault-yaml` modules:
+
+1. **For existing secrets engines**: Connect an existing mount (e.g., `/pki` or `/kubernetes`) to the corresponding `vault-yaml` module using the `mount` variable. The module will create new roles defined in your YAML alongside any existing roles.
+
+2. **For existing auth methods**: Reference your existing auth methods in the configuration. This enables `vault-yaml` to use principals (users, groups, entities) that are already authenticated through those auth methods.
+
+#### Example
+
+If you have an existing Kubernetes engine referenced by Terraform with `vault_kubernetes_secret_backend.kubernetes`, that already contains legacy roles:
+
+```hcl
+module "kubernetes" {
+  source = "github.com/gateplane-io/vault-yaml.git//terraform/modules/secrets-engines/kubernetes"
+
+  // Tying the vault-yaml configuration with existing Secrets Engine
+  mount = vault_kubernetes_secret_backend.kubernetes
+
+  // The directory where Kubernetes roles are defined (roles/kubernetes/<role_name>.yaml)
+  role_directory = "./roles/kubernetes"
+  // The `yamldecode` of your accessess.yaml file
+  accesses       = local.accesses
+}
+```
+
+Your existing roles remain untouched, and the new roles defined in the `accessess.yaml` are added alongside them.
+
+This approach allows you to **gradually adopt** `vault-yaml`'s declarative management style without requiring a risky "big bang" migration.
+
+### What `vault-yaml` manages
+
+`vault-yaml` focuses on **access control and role management**. Here's what's in scope:
+
+✅ **Managed by `vault-yaml`:**
+- Secret engine roles (e.g., PKI roles, Kubernetes roles, SSH roles)
+- Policies associated with those roles
+- Role-to-principal assignments (who can use which role)
+- Ad-hoc Vault policies defined in templates
+- Conditional access using GatePlane plugins transparently
+
+❌ **Managed separately (not by `vault-yaml`):**
+- Vault/OpenBao server configuration
+- Authentication method setup (LDAP, JWT, etc.)
+- Secret engine mounts and basic configuration
+- Identity entities and groups (these must exist first)
+- Root tokens, recovery keys, and server certificates
+- Audit logs and monitoring setup
+
+**Think of it this way:** `vault-yaml` builds the access layer on top of infrastructure you've already configured. You set up the Vault/OpenBao server, auth methods, and secret engines - then `vault-yaml` helps you manage "who has what access to what" in a declarative, auditable way.
 
 ## License
 
