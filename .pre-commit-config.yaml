@@ -50,4 +50,4 @@ repos:
           - --in-place
           - github
           - -l
-          - "4"
+          - "3"
