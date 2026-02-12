@@ -57,6 +57,7 @@ The YAML schema is consumed by Terraform modules located in `/terraform/modules`
     - [Gradual Migration](#gradual-migration)
     - [How it works](#how-it-works-1)
     - [Example](#example-2)
+- [🎯 GatePlane Services](#-gateplane-services)
 - [📦 What `vault-yaml` manages](#-what-vault-yaml-manages)
 - [⚖️ License](#-license)
 
@@ -314,7 +315,7 @@ See [`terraform/main.tf#L66`](https://github.com/gateplane-io/vault-yaml/blob/ma
 
 ### Prerequisites
 
-Before using vault-yaml, ensure you have:
+Before using `vault-yaml`, ensure you have:
 
 - **Terraform** (v1.0+) installed and configured
 - **Vault or OpenBao** server running and accessible
@@ -377,6 +378,16 @@ module "kubernetes" {
 Your existing roles remain untouched, and the new roles defined in the `accessess.yaml` are added alongside them.
 
 This approach allows you to **gradually adopt** `vault-yaml`'s declarative management style without requiring a risky "big bang" migration.
+
+## 🎯 GatePlane Services
+
+The GatePlane Policy Gate plugin is free and fully included with `vault-yaml` under the Elastic V2 License, providing conditional access, approval workflows, and time-bound credentials.
+
+For enhanced visibility, you can subscribe to [GatePlane Services](https://gateplane.io) which adds real-time notifications (Slack, Teams, Discord) and access metrics/analytics to help you track usage patterns and identify bottlenecks.
+
+To enable GatePlane Services, add/uncomment the `gateplane_services` module to your [`terraform/gateplane.tf`](https://github.com/gateplane-io/vault-yaml/blob/main/terraform/gateplane.tf) file:
+
+After applying the configuration, run `terraform output gateplane_services_output` and send the output to `services@gateplane.io` to activate your subscription.
 
 ## 📦 What `vault-yaml` manages
 
