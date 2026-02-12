@@ -29,7 +29,7 @@ locals {
 /* === Secrets Engines ===  */
 
 module "ca" {
-  source = "./modules/secret-engines/pki"
+  source = "./modules/secrets-engines/pki"
 
   mount = vault_mount.pki
 
@@ -43,7 +43,7 @@ module "ca" {
 
 
 module "kubernetes" {
-  source = "./modules/secret-engines/kubernetes"
+  source = "./modules/secrets-engines/kubernetes"
 
   mount = vault_kubernetes_secret_backend.kubernetes
 
@@ -53,7 +53,7 @@ module "kubernetes" {
 
 
 module "ssh" {
-  source = "./modules/secret-engines/ssh"
+  source = "./modules/secrets-engines/ssh"
 
   accesses = local.accesses
 
@@ -91,7 +91,7 @@ locals {
 }
 
 module "vault" {
-  source = "./modules/secret-engines/vault"
+  source = "./modules/secrets-engines/vault"
 
   role_directory = "../roles/vault"
   accesses       = local.accesses
