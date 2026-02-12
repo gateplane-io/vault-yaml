@@ -15,8 +15,8 @@ module "setup" {
   # https://github.com/gateplane-io/vault-plugins/releases
   policy_gate_plugin = {
     filename       = "gateplane-policy-gate"
-    version        = "v1.0.0-base.0.3.1"
-    sha256         = "926a2f812fbbc26513422043c75f78816332d1b7d6ab3c36e0bbc03d944eff0a"
+    version        = "v1.0.1-base.0.3.2"
+    sha256         = "55b4bdf9a89bc7297b056fc68dd2be8f0a8a2654cdf562134c380b25b4c0c04b"
     approle_policy = "gateplane-policy-gate-policy"
   }
 
