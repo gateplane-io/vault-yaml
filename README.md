@@ -3,7 +3,7 @@
 *Vault/OpenBao configuration for mere humans*
 
 
-## Problem statement
+## 🚨 Problem statement
 
 Configuring Vault/OpenBao at scale is *complex and opaque*.
 It requires a steep learning curve and its flexibility exposes many configuration paths,
@@ -14,7 +14,7 @@ into a single, declarative configuration format that surfaces the most common
 and security-relevant options explicitly.
 
 
-## Overview
+## 📋 Overview
 
 This project provides a declarative YAML format for configuring Vault and OpenBao that focuses on solving the critical security question: **"who has what access to what?"**
 
@@ -27,14 +27,14 @@ By defining secret engines, roles, policies, and access control in a single, hum
 
 The YAML schema is consumed by Terraform modules located in `/terraform/modules`, with working examples available in `/terraform`.
 
-## Table of Contents
+## 📑 Table of Contents
 
 <!--TOC-->
 
-- [Problem statement](#problem-statement)
-- [Overview](#overview)
-- [Table of Contents](#table-of-contents)
-- [Top-level Structure](#top-level-structure)
+- [🚨 Problem statement](#-problem-statement)
+- [📋 Overview](#-overview)
+- [📑 Table of Contents](#-table-of-contents)
+- [🏗️ Top-level Structure](#-top-level-structure)
   - [`type`](#type)
     - [Supported examples](#supported-examples)
   - [`roles`](#roles)
@@ -50,19 +50,19 @@ The YAML schema is consumed by Terraform modules located in `/terraform/modules`
     - [How it works](#how-it-works)
     - [Example:](#example-1)
     - [Template variables](#template-variables)
-- [Getting Started](#getting-started)
+- [🚀 Getting Started](#-getting-started)
   - [Prerequisites](#prerequisites)
   - [Starting fresh](#starting-fresh)
   - [Bring Your Own Vault (BYOV)](#bring-your-own-vault-byov)
     - [Gradual Migration](#gradual-migration)
     - [How it works](#how-it-works-1)
     - [Example](#example-2)
-  - [What `vault-yaml` manages](#what-vault-yaml-manages)
-- [License](#license)
+- [📦 What `vault-yaml` manages](#-what-vault-yaml-manages)
+- [⚖️ License](#-license)
 
 <!--TOC-->
 
-## Top-level Structure
+## 🏗️ Top-level Structure
 The [`/access.example.yaml`](https://github.com/gateplane-io/vault-yaml/blob/main/access.example.yaml) file demonstrates all supported features with inline comments to guide you through them.
 
 Each top-level key represents a logical Vault mount (secrets engine) or feature group:
@@ -310,7 +310,7 @@ path "${secrets_engines["kv"]["path"]}/data/users/{{ identity.entity.name }}" {
 
 See [`terraform/main.tf#L66`](https://github.com/gateplane-io/vault-yaml/blob/main/terraform/main.tf#L66) for how these maps are constructed.
 
-## Getting Started
+## 🚀 Getting Started
 
 ### Prerequisites
 
@@ -378,7 +378,7 @@ Your existing roles remain untouched, and the new roles defined in the `accesses
 
 This approach allows you to **gradually adopt** `vault-yaml`'s declarative management style without requiring a risky "big bang" migration.
 
-### What `vault-yaml` manages
+## 📦 What `vault-yaml` manages
 
 `vault-yaml` focuses on **access control and role management**. Here's what's in scope:
 
@@ -399,7 +399,7 @@ This approach allows you to **gradually adopt** `vault-yaml`'s declarative manag
 
 **Think of it this way:** `vault-yaml` builds the access layer on top of infrastructure you've already configured. You set up the Vault/OpenBao server, auth methods, and secret engines - then `vault-yaml` helps you manage "who has what access to what" in a declarative, auditable way.
 
-## License
+## ⚖️ License
 
 This project is licensed under the [Elastic License v2](https://www.elastic.co/licensing/elastic-license).
 
