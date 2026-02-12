@@ -8,9 +8,7 @@
 # Use, modification, and redistribution permitted under the terms of the license,
 # except for providing this software as a commercial service or product.
 
-variable "description" {}
-
-variable "path" {}
+variable "mount" {}
 
 # ===
 

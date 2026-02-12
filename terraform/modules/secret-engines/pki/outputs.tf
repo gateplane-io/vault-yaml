@@ -18,7 +18,7 @@ output "access_list" {
 
 output "entry" {
   value = {
-    "path"     = vault_mount.this.path,
-    "accessor" = vault_mount.this.accessor,
+    "path"     = var.mount.path
+    "accessor" = var.mount.accessor,
   }
 }

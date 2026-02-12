@@ -8,14 +8,18 @@
 # Use, modification, and redistribution permitted under the terms of the license,
 # except for providing this software as a commercial service or product.
 
-resource "vault_mount" "kvv2" {
-  path        = "kvv2"
-  type        = "kv"
-  options     = { version = "2" }
-  description = "KV Version 2 secret engine mount"
-}
+resource "vault_ldap_auth_backend" "this" {
+  description = "Org LDAP Auth Method"
 
-resource "vault_kv_secret_backend_v2" "kvv2" {
-  mount        = vault_mount.kvv2.path
-  max_versions = 2
+  path = "ldap"
+  url  = "ldaps://ldap.example.com"
+
+  userdn   = "dc=org,dc=com"
+  userattr = "uid"
+
+  # Use the query and search their 'memberOf' field values
+  groupdn     = "dc=org,dc=com"
+  groupfilter = "(&(objectClass=person)(uid={{.Username}}))"
+  groupattr   = "memberOf"
+
 }

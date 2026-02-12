@@ -8,38 +8,12 @@
 # Use, modification, and redistribution permitted under the terms of the license,
 # except for providing this software as a commercial service or product.
 
-resource "vault_mount" "this" {
-  description               = var.description
-  type                      = "pki"
-  path                      = var.path
-  default_lease_ttl_seconds = 600
-  max_lease_ttl_seconds     = 86400
-}
-
-resource "vault_pki_secret_backend_root_cert" "this" {
-  depends_on  = [vault_mount.this]
-  backend     = vault_mount.this.path
-  type        = "internal"
-  common_name = var.ca_cn
-  # Set Verbatim End Date instead of 'ttl'
-  # not_after            = "2027-01-23T18:46:42Z"
-  not_after            = var.ca_expiration
-  format               = "pem"
-  private_key_format   = "der"
-  key_type             = "rsa"
-  key_bits             = 4096
-  exclude_cn_from_sans = true
-  # ou                   = "My OU"
-  organization = var.ca_organization
-}
-
-
 resource "vault_pki_secret_backend_role" "this" {
   for_each = local.policies_map
 
-  backend    = vault_mount.this.path
+  backend    = var.mount.path
   name       = each.value["role_name"]
-  issuer_ref = vault_pki_secret_backend_root_cert.this.issuer_id
+  issuer_ref = var.issuer_id
 
   no_store    = false
   client_flag = each.value["client_flag"]

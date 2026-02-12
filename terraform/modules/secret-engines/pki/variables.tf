@@ -8,21 +8,9 @@
 # Use, modification, and redistribution permitted under the terms of the license,
 # except for providing this software as a commercial service or product.
 
-variable "description" {}
+variable "mount" {}
 
-variable "path" {}
-
-variable "ca_cn" {
-  type = string
-}
-
-variable "ca_organization" {
-  type = string
-}
-
-variable "ca_expiration" {
-  type = string
-}
+variable "issuer_id" {}
 
 variable "templated_common_names" {
   type = map(string)

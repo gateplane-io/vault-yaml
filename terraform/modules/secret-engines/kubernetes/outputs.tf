@@ -18,7 +18,7 @@ output "access_list" {
 
 output "entry" {
   value = {
-    "path"     = vault_kubernetes_secret_backend.this.path,
-    "accessor" = vault_kubernetes_secret_backend.this.accessor,
+    "path"     = var.mount.path,
+    "accessor" = var.mount.accessor,
   }
 }

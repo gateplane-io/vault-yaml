@@ -24,6 +24,6 @@ resource "vault_identity_group_alias" "ldap" {
   for_each = local.authorizations["groups"]
 
   name           = each.key
-  mount_accessor = vault_ldap_auth_backend.this.accessor
+  mount_accessor = var.mount.accessor
   canonical_id   = vault_identity_group.ldap[each.key].id
 }

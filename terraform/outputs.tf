@@ -11,7 +11,3 @@
 output "authorizations" {
   value = local.authorizations
 }
-
-output "ssh_ca" {
-  value = module.ssh.ssh_ca
-}

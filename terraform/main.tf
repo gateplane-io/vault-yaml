@@ -11,24 +11,9 @@
 # Authentication Methods
 
 module "ldap" {
-  source      = "./modules/auth-methods/ldap"
-  description = "Org LDAP Auth Method"
+  source = "./modules/auth-methods/ldap"
 
-  path     = "ldap"
-  ldap_url = "ldaps://ldap.example.com"
-
-  ldap_userdn   = "dc=org,dc=com"
-  ldap_userattr = "uid"
-
-  # Use the query and search their 'memberOf' field values
-  ldap_groupdn     = "dc=org,dc=com"
-  ldap_groupfilter = "(&(objectClass=person)(uid={{.Username}}))"
-  ldap_groupattr   = "memberOf"
-
-  ldap_discoverdn           = true
-  ldap_username_as_alias    = true
-  ldap_case_sensitive_names = false
-  ldap_deny_null_bind       = true
+  mount = vault_ldap_auth_backend.this
 
   policies_list = local.policies_list
   principal_key = "ldap" # handles Principals starting with 'ldap'
@@ -47,14 +32,10 @@ module "identity" {
 module "ca" {
   source = "./modules/secret-engines/pki"
 
-  accesses = local.accesses
+  mount = vault_mount.pki
 
-  path        = "pki/org-ca"
-  description = "The central CA of the Org"
-
-  ca_cn           = "Org CA"
-  ca_organization = "Org"
-  ca_expiration   = "2031-05-10T12:00:00Z"
+  accesses  = local.accesses
+  issuer_id = vault_pki_secret_backend_root_cert.this.issuer_id
 
   templated_common_names = {
     email = "{{identity.entity.aliases.${local.auth_methods["ldap"]["accessor"]}.name}}@my-org.example.com"
@@ -77,15 +58,10 @@ module "adhoc" {
 module "kubernetes" {
   source = "./modules/secret-engines/kubernetes"
 
+  mount = vault_kubernetes_secret_backend.kubernetes
+
   role_directory = "../roles/kubernetes"
   accesses       = local.accesses
-
-  path        = "staging/cluster01"
-  description = "Vault testing for K8s Cluster"
-
-  kubernetes_host     = "https://127.0.0.1:6443"
-  service_account_jwt = var.kubernetes_token
-  kubernetes_ca_cert  = var.kubernetes_ca
 }
 
 
@@ -94,8 +70,7 @@ module "ssh" {
 
   accesses = local.accesses
 
-  path        = "staging/vms"
-  description = "Access Staging VM through SSH"
+  mount = vault_mount.ssh
 
   allowed_users = "{{identity.entity.aliases.${local.auth_methods["ldap"]["accessor"]}.name}}"
   default_user  = "{{identity.entity.aliases.${local.auth_methods["ldap"]["accessor"]}.name}}"

@@ -8,13 +8,7 @@
 # Use, modification, and redistribution permitted under the terms of the license,
 # except for providing this software as a commercial service or product.
 
-variable "description" {
-  type    = string
-  default = "LDAP authentication method"
-}
-
-variable "path" {
-  default = "ldap"
+variable "mount" {
 }
 
 variable "policies_list" {
@@ -25,62 +19,4 @@ variable "policies_list" {
 variable "principal_key" {
   description = "The key to by used in Principals (e.g: `<key>.users.jdoe`)"
   default     = "ldap"
-}
-# ================
-#
-variable "ldap_url" {
-  description = "The LDAP server URL"
-  type        = string
-}
-
-variable "ldap_userdn" {
-  description = "The base DN for user searches"
-  type        = string
-}
-
-variable "ldap_userattr" {
-  description = "The attribute on user entries matching the username"
-  type        = string
-  default     = "uid"
-}
-
-variable "ldap_groupdn" {
-  description = "The base DN for group searches"
-  type        = string
-}
-
-variable "ldap_groupfilter" {
-  description = "The LDAP search filter to find groups for a user"
-  type        = string
-  default     = "(&(objectClass=person)(uid={{.Username}}))"
-}
-
-variable "ldap_groupattr" {
-  description = "The attribute on group entries that contains group members"
-  type        = string
-  default     = "memberOf"
-}
-
-variable "ldap_discoverdn" {
-  description = "Whether to discover user's DN"
-  type        = bool
-  default     = true
-}
-
-variable "ldap_username_as_alias" {
-  description = "Whether to use username as alias"
-  type        = bool
-  default     = true
-}
-
-variable "ldap_case_sensitive_names" {
-  description = "Whether usernames and group names are case sensitive"
-  type        = bool
-  default     = false
-}
-
-variable "ldap_deny_null_bind" {
-  description = "Whether to deny null binds"
-  type        = bool
-  default     = true
 }

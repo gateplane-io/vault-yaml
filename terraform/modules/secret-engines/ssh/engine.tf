@@ -8,28 +8,14 @@
 # Use, modification, and redistribution permitted under the terms of the license,
 # except for providing this software as a commercial service or product.
 
-resource "vault_mount" "this" {
-  type = "ssh"
-  path = var.path
-}
-
-resource "vault_ssh_secret_backend_ca" "this" {
-  backend              = vault_mount.this.path
-  generate_signing_key = true
-
-  lifecycle {
-    ignore_changes = [generate_signing_key]
-  }
-}
-
 resource "vault_ssh_secret_backend_role" "this" {
   for_each = {
     for k, v in local.policies_map :
-    v["role_name"] => v if v["path"] == var.path
+    v["role_name"] => v if v["path"] == var.mount.path
   }
 
   name                    = each.key
-  backend                 = vault_ssh_secret_backend_ca.this.backend
+  backend                 = var.mount.path
   key_type                = "ca"
   allow_user_certificates = true
 

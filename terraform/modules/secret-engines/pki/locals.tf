@@ -14,7 +14,7 @@ locals {
   selected = {
     for path, accesses_values in var.accesses :
     path => accesses_values
-    if accesses_values["type"] == "pki" && path == var.path
+    if accesses_values["type"] == "pki" && path == var.mount.path
   }
 
   roles_list   = module.parser.roles_list_static

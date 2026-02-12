@@ -13,17 +13,17 @@ output "principal_key" {
 }
 
 output "accessor" {
-  value = vault_ldap_auth_backend.this.accessor
+  value = var.mount.accessor
 }
 
 output "path" {
-  value = vault_ldap_auth_backend.this.path
+  value = var.mount.path
 }
 
 output "entry" {
   value = {
-    "accessor" : vault_ldap_auth_backend.this.accessor,
-    "path" : vault_ldap_auth_backend.this.path,
+    "accessor" : var.mount.accessor,
+    "path" : var.mount.path,
   }
 }
 
