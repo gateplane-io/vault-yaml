@@ -8,6 +8,16 @@
 # Use, modification, and redistribution permitted under the terms of the license,
 # except for providing this software as a commercial service or product.
 
+/*
+  ====================================================
+  This file IS PART OF the 'vault-yaml' installation
+
+  Set the required version of GatePlane Policy Gate plugin,
+  available in your Vault/OpenBao installation,
+  or omit entirely to disable conditional access
+  (`access.conditional` blocks in accesses.yaml).
+  ====================================================
+*/
 module "setup" {
   source  = "gateplane-io/setup/gateplane"
   version = "0.4.0"
@@ -20,8 +30,9 @@ module "setup" {
     approle_policy = "gateplane-policy-gate-policy"
   }
 
+  // Omit or explicitly add all origins to allow CORS from GatePlane WebUI
   url_origins = [
     "https://app.gateplane.io",
-    "https://localhost:8200" // Add instance FQDN
+    "https://localhost:8200" // <-- Add your instance's FQDN
   ]
 }

@@ -8,6 +8,14 @@
 # Use, modification, and redistribution permitted under the terms of the license,
 # except for providing this software as a commercial service or product.
 
+/*
+  ====================================================
+  Resources defined in this file are example "pre-existing"
+  configuration to be managed by 'vault-yaml'.
+
+  They are not considered part of 'vault-yaml' installation.
+  ====================================================
+*/
 resource "vault_mount" "kvv2" {
   path        = "kvv2"
   type        = "kv"
