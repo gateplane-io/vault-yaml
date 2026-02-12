@@ -9,7 +9,7 @@
 # except for providing this software as a commercial service or product.
 
 module "parser" {
-  source = "../../role-parser"
+  source = "../../helpers/role-parser"
 
   name_prefix = var.name_prefix
 

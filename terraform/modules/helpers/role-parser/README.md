@@ -14,16 +14,16 @@ This Terraform module parses a decoded YAML structure containing roles and condi
 ```hcl
 module "role_parser" {
   source = "./modules/role-parser"
-  
+
   # Pass the decoded YAML structure
   accesses = var.accesses
-  
+
   # Define fields to extract with defaults
   field_defaults = {
     ttl     = 600
     ttl_max = 3600
   }
-  
+
   # Optional name prefix
   name_prefix = "env-"
 }

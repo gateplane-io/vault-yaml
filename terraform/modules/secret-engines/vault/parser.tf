@@ -14,13 +14,9 @@ module "parser" {
   name_prefix = var.name_prefix
 
   accesses = var.accesses
-  path     = var.mount.path
+  path     = "adhoc"
 
   field_defaults = {
-    # Kubernetes does not allow
-    # SA that expire in less than 10 minutes
-    "ttl" : 10 * 60
-    "ttl_max" : 60 * 60
-    "namespaces" : []
+    "for_each" : false,
   }
 }

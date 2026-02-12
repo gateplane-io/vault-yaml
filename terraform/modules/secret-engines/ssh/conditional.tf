@@ -10,7 +10,7 @@
 
 module "gateplane" {
   count  = var.enable_conditional_roles ? 1 : 0
-  source = "../../../modules/conditional-access"
+  source = "../../helpers/conditional-access"
 
   name_prefix = var.name_prefix
 

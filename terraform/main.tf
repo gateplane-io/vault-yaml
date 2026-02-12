@@ -44,7 +44,7 @@ module "ca" {
 
 
 module "adhoc" {
-  source = "./modules/adhoc-policies"
+  source = "./modules/secret-engines/vault"
 
   role_directory = "../roles/vault"
   accesses       = local.accesses
