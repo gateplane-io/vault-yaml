@@ -18,6 +18,15 @@
   (`access.conditional` blocks in accesses.yaml).
   ====================================================
 */
+
+locals {
+  // Change in case of GatePlane Enterprise
+  gateplane_webui_domain = "app.gateplane.io"
+
+  // The Host:Port where Vault/OpenBao instance is reachable
+  instance_hostport = "localhost:8200"
+}
+
 module "setup" {
   source  = "gateplane-io/setup/gateplane"
   version = "0.4.0"
@@ -32,7 +41,46 @@ module "setup" {
 
   // Omit or explicitly add all origins to allow CORS from GatePlane WebUI
   url_origins = [
-    "https://app.gateplane.io",
-    "https://localhost:8200" // <-- Add your instance's FQDN
+    "https://${local.gateplane_webui_domain}",
+    "https://${local.instance_hostport}:8200"
   ]
 }
+
+/*
+  ====================================================
+  Consult module's documentation to enable GatePlane Services Subscription:
+  https://github.com/gateplane-io/terraform-gateplane-services-setup?tab=readme-ov-file#how-to-enable-gateplane-services
+  ====================================================
+*/
+module "gateplane_services" {
+  source  = "gateplane-io/services-setup/gateplane"
+  version = "0.1.2"
+
+  // replace this with the location of the Vault/OpenBao instance
+  issuer_host = local.instance_hostport
+
+  // The Vault/OpenBao Entity metadata field where the SlackID of each user resides
+  # messenger_entity_metadata = ["slack_id"]
+
+  gateplane_webui_domain = local.gateplane_webui_domain
+
+  /*
+  # You can explicitly set which users take up the license seats,
+  # or omit to allow everyone in Vault/OpenBao to connect
+  allowed_entities = [
+    # Vault/OpenBao Entity IDs:
+    "c15cfc49-ecb1-4771-9b86-3139d8f37223",
+    "0b9faf28-e043-45ef-8cc3-9ad83123af20",
+    # ...
+  ]
+  */
+
+}
+
+/*
+# Uncomment to show GatePlane Services information in output (non-sensitive values)
+output "gateplane_services_output" {
+  description = "Provide this output to GatePlane (net/no-net) and GatePlane UI users (webui)"
+  value       = module.gateplane_services.full_output
+}
+*/
