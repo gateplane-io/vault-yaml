@@ -9,18 +9,22 @@
 # except for providing this software as a commercial service or product.
 
 output "principal_key" {
-  value = var.principal_key
+  description = "The key used in principals to identify this auth method (e.g., 'ldap')."
+  value       = var.principal_key
 }
 
 output "accessor" {
-  value = var.mount.accessor
+  description = "The accessor for the LDAP auth method mount."
+  value       = var.mount.accessor
 }
 
 output "path" {
-  value = var.mount.path
+  description = "The mount path of the LDAP auth method."
+  value       = var.mount.path
 }
 
 output "entry" {
+  description = "A map containing both the accessor and path of the LDAP auth method."
   value = {
     "accessor" : var.mount.accessor,
     "path" : var.mount.path,
@@ -28,6 +32,7 @@ output "entry" {
 }
 
 output "authorizations" {
+  description = "The mapping of LDAP groups and users to their assigned policies for this auth method."
   value = {
     (var.principal_key) = local.authorizations
   }

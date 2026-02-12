@@ -9,10 +9,12 @@
 # except for providing this software as a commercial service or product.
 
 output "principal_key" {
-  value = var.principal_key
+  description = "The key used in principals to identify this auth method (e.g., 'identity')."
+  value       = var.principal_key
 }
 
 output "authorizations" {
+  description = "The mapping of entities and groups to their assigned policies for this auth method."
   value = {
     (var.principal_key) = local.authorizations
   }

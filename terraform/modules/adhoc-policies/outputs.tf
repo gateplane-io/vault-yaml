@@ -9,9 +9,11 @@
 # except for providing this software as a commercial service or product.
 
 output "policies" {
-  value = vault_policy.adhoc
+  description = "The Vault policies created for ad-hoc access configurations."
+  value       = vault_policy.adhoc
 }
 
 output "access_list" {
-  value = local.roles_list
+  description = "The list of roles/access configurations defined in the adhoc-policies module."
+  value       = local.roles_list
 }

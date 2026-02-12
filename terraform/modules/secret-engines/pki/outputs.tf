@@ -9,14 +9,17 @@
 # except for providing this software as a commercial service or product.
 
 output "policies" {
-  value = vault_policy.this
+  description = "The Vault policies created for PKI roles."
+  value       = vault_policy.this
 }
 
 output "access_list" {
-  value = flatten([local.roles_list, try(module.gateplane[0].access_list, [])])
+  description = "The flattened list of all PKI access policies, including both static and conditional access policies (if enabled)."
+  value       = flatten([local.roles_list, try(module.gateplane[0].access_list, [])])
 }
 
 output "entry" {
+  description = "A map containing the mount path and accessor for the PKI secrets engine."
   value = {
     "path"     = var.mount.path
     "accessor" = var.mount.accessor,

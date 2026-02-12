@@ -9,5 +9,6 @@
 # except for providing this software as a commercial service or product.
 
 output "authorizations" {
-  value = local.authorizations
+  description = "The mapping of all authorizations from auth methods and secret engines, including policies assigned to entities, groups, and roles."
+  value       = local.authorizations
 }

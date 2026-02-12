@@ -9,5 +9,6 @@
 # except for providing this software as a commercial service or product.
 
 output "access_list" {
-  value = local.compatible_policies_list
+  description = "The list of compatible policies that can be used with conditional access gates, including requestor and approver access mappings."
+  value       = local.compatible_policies_list
 }

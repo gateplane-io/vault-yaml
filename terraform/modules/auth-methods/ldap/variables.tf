@@ -9,6 +9,7 @@
 # except for providing this software as a commercial service or product.
 
 variable "mount" {
+  description = "The configuration object for the LDAP auth method, containing the mount path and accessor ([`vault_ldap_auth_backend`](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/ldap_auth_backend))."
 }
 
 variable "policies_list" {

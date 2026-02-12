@@ -8,28 +8,34 @@
 # Use, modification, and redistribution permitted under the terms of the license,
 # except for providing this software as a commercial service or product.
 
-variable "mount" {}
+variable "mount" {
+  description = "The mount configuration object for the Kubernetes secrets engine ([`vault_kubernetes_secret_backend`](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/kubernetes_secret_backend))."
+}
 
 variable "enable_conditional_roles" {
-  default = true
+  description = "Enable or disable conditional access roles that require approval workflows."
+  default     = true
 }
 
 variable "name_template" {
-  default = "{{.DisplayName | replace \"_\" \"-\"  | replace \" \" \"\"}}-{{.RoleName | replace \"_\" \"-\"}}-{{unix_time}}s"
+  description = "Template for generating Kubernetes Service Account names."
+  default     = "{{.DisplayName | replace \"_\" \"-\"  | replace \" \" \"\"}}-{{.RoleName | replace \"_\" \"-\"}}-{{unix_time}}s"
 }
 
 # ======
 
 variable "role_directory" {
-  type = string
+  description = "The directory path containing Kubernetes role definition YAML files."
+  type        = string
 }
 
 variable "accesses" {
-
+  description = "Map of access configurations for Kubernetes secrets engine, defining roles and their properties."
 }
 
 variable "name_prefix" {
-  default = ""
+  description = "Prefix to prepend to resource names created by this module."
+  default     = ""
 }
 
 variable "kubernetes_labels" {

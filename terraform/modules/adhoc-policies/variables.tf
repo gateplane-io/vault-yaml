@@ -8,20 +8,26 @@
 # Use, modification, and redistribution permitted under the terms of the license,
 # except for providing this software as a commercial service or product.
 
-variable "accesses" {}
+variable "accesses" {
+  description = "Map of access configurations for creating ad-hoc policies, defining what paths and capabilities each access level requires."
+}
 
 variable "name_prefix" {
-  default = ""
+  description = "Prefix to prepend to resource names created by this module."
+  default     = ""
 }
 
 variable "role_directory" {
-  type = string
+  description = "The directory path where role definitions are stored and will be parsed."
+  type        = string
 }
 
 variable "secret_engines" {
-  type = map(map(string))
+  description = "Map of secret engine configurations used for policy generation, keyed by engine type."
+  type        = map(map(string))
 }
 
 variable "auth_methods" {
-  type = map(map(string))
+  description = "Map of authentication method configurations used for policy generation, keyed by auth method type."
+  type        = map(map(string))
 }

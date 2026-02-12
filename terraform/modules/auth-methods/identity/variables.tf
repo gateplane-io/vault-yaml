@@ -19,5 +19,6 @@ variable "principal_key" {
 }
 
 variable "exclusive" {
-  default = false
+  description = "If true, policies are added exclusively to the entity or group (removing any other policies). If false, policies are appended."
+  default     = false
 }
