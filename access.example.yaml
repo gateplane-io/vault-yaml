@@ -21,6 +21,9 @@ pki/org-ca:
       access:
         static:
           - "ldap.groups.CertificateAdministrators"
+        # Principals from different Auth Methods
+        #  can be mixed as well:
+        # - "userpass.cert-admin" # <-- if the 'admin-1' user does not exist, terraform errors
 
         # Apart from users authenticated through LDAP
         # Vault/OpenBao Entities and Groups can be directly used.
@@ -82,7 +85,7 @@ staging/cluster01:
         static:
           - "ldap.groups.KubernetesAdministrators"
           - "ldap.users.jdoe"
-        conditional: # TODOOOOOOOOOOO
+        conditional:
           # Developers can also claim temporary access to 'admin' role
           # (e.g for hotfixes, routine maintainance)
           requestors:

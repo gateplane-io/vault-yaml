@@ -248,9 +248,23 @@ Examples:
 - `identity.group_id.30210932-96a2-f3de-bc39-24e49d543832`
 - `identity.group_name.InternalAdmins`
 
+> **Note:** If an Entity or Group does not exist, but is referenced in the `accesses.yaml`, `terraform apply` will exit with an error.
+
 > **Note:** Avoid managing [external Vault groups](https://developer.hashicorp.com/vault/docs/concepts/identity#external-vs-internal-groups) with `vault-yaml`, as this can cause Terraform drift issues.
 
-**3. JWT authentication** *(Work in Progress)*
+**2. Vault/OpenBao plain UserPass**
+
+Format: `userpass.user-1`
+
+These principals reference usernames created through the "[Username and Password](https://developer.hashicorp.com/vault/docs/auth/userpass)" Auth Method of Vault/OpenBao.
+
+Examples:
+- `userpass.jdoe`
+- `userpass.mitchellh`
+
+> **Note:** If the username does not exist, but is referenced in the `accesses.yaml`, `terraform apply` will exit with an error.
+
+**4. JWT authentication** *(Work in Progress)*
 
 Format: `jwt.<role>.<jwt-sub>`
 
