@@ -23,6 +23,7 @@ locals {
           "access_conditional" : {
             "required_approvals" : try(role["access"]["conditional"]["required_approvals"], 1),
             "require_justification" : try(role["access"]["conditional"]["require_justification"], false),
+            "description" : try(role["access"]["conditional"]["description"], ""),
           },
         },
         {

@@ -17,7 +17,8 @@ module "policy_gate" {
 
   endpoint_prefix = ""
 
-  name = each.key
+  name        = each.key
+  description = each.value["access_conditional"]["description"]
 
   protected_policies = [var.policies[each.key].name]
 
