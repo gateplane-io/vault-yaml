@@ -16,7 +16,7 @@ locals {
     path => accesses_values if accesses_values["type"] == "vault"
   }
 
-  roles_list = module.parser.roles_list
+  roles_list = module.parser.roles_list_static
 
   # Keep the data relevant for Vault Policies (remove accesses)
   adhoc_policies = {

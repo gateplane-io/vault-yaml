@@ -8,12 +8,12 @@
 # Use, modification, and redistribution permitted under the terms of the license,
 # except for providing this software as a commercial service or product.
 
-output "policies" {
-  description = "The Vault policies created for ad-hoc access configurations."
-  value       = vault_policy.adhoc
-}
+module "gateplane" {
+  count  = var.enable_conditional_roles ? 1 : 0
+  source = "../../helpers/conditional-access"
 
-output "access_list" {
-  description = "The list of roles/access configurations defined in the adhoc-policies module."
-  value       = flatten([local.roles_list, try(module.gateplane[0].access_list, [])])
+  name_prefix = var.name_prefix
+
+  roles_conditional = module.parser.roles_list_conditional
+  policies          = vault_policy.adhoc
 }

@@ -31,3 +31,8 @@ variable "auth_methods" {
   description = "Map of authentication method configurations used for policy generation, keyed by auth method type."
   type        = map(map(string))
 }
+
+variable "enable_conditional_roles" {
+  description = "Enable or disable conditional access roles that require approval workflows."
+  default     = true
+}
