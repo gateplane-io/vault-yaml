@@ -28,6 +28,8 @@ module "parser" {
 
     "allowed_domains" : []
     "templated_common_name" : []
+    "allow_bare_domains" : false
+    "allow_glob_domains" : false
 
     "client_flag" : true
     "server_flag" : false
