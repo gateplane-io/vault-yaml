@@ -236,7 +236,7 @@ Examples:
 - `ldap.groups.Developers`
 - `ldap.users.jdoe`
 
-**2. Vault/OpenBao identities**
+**2. Vault/OpenBao Identities**
 
 Format: `identity.entity_id.<id>` or `identity.entity_name.<name>` or `identity.group_id.<id>` or `identity.group_name.<name>`
 
@@ -252,11 +252,11 @@ Examples:
 
 > **Note:** Avoid managing [external Vault groups](https://developer.hashicorp.com/vault/docs/concepts/identity#external-vs-internal-groups) with `vault-yaml`, as this can cause Terraform drift issues.
 
-**2. Vault/OpenBao plain UserPass**
+**3. Username and Password**
 
-Format: `userpass.user-1`
+Format: `userpass.<username>`
 
-These principals reference usernames created through the "[Username and Password](https://developer.hashicorp.com/vault/docs/auth/userpass)" Auth Method of Vault/OpenBao.
+These principals reference usernames created through the "[Username and Password (userpass)](https://developer.hashicorp.com/vault/docs/auth/userpass)" Auth Method of Vault/OpenBao.
 
 Examples:
 - `userpass.jdoe`
@@ -264,7 +264,19 @@ Examples:
 
 > **Note:** If the username does not exist, but is referenced in the `accesses.yaml`, `terraform apply` will exit with an error.
 
-**4. JWT authentication** *(Work in Progress)*
+
+**4. Client Certificates (mTLS)**
+
+Format: `cert.<common_name>`
+
+These principals reference Client Certificate Common Names of x509 Certificates authenticated through the "[TLS Certificates](https://developer.hashicorp.com/vault/docs/auth/cert)" Auth Method of Vault/OpenBao.
+
+Examples:
+- `cert.example.com`
+- `cert.jdoe@mail.example.com`
+
+
+**5. JWT authentication** *(Work in Progress)*
 
 Format: `jwt.<role>.<jwt-sub>`
 
