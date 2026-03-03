@@ -71,7 +71,8 @@
           "items": { "type": "string" }
         },
         "require_justification": { "type": "boolean" },
-        "required_approvals": { "type": "integer" }
+        "required_approvals": { "type": "integer" },
+        "description": { "type": "string" }
       },
       "required": ["requestors", "approvers"],
       "additionalProperties": false
