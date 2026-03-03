@@ -85,6 +85,9 @@ staging/cluster01:
         static:
           - "ldap.groups.KubernetesAdministrators"
           - "ldap.users.jdoe"
+          # A certificate that has been generated through the
+          # pki/org-ca 'client-generate' role above
+          - "cert.jdoe@my-org.example.com"
         conditional:
           # Developers can also claim temporary access to 'admin' role
           # (e.g for hotfixes, routine maintainance)

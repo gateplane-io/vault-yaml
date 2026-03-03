@@ -136,11 +136,29 @@ module "identity" {
   principal_key = "identity"
 }
 
+# Handle Principals authenticated through mTLS
+# at POST /v1/auth/cert/login endpoint
+module "cert" {
+  source = "./modules/auth-methods/cert"
+
+  policies_list = local.policies_list
+
+  # Explicitly trust the Certificate Authority
+  # set up in Vault under 'pki/org-ca'
+  trusted_certificate = vault_pki_secret_backend_root_cert.this.certificate
+  mount               = vault_auth_backend.cert
+
+  # handles Principals starting with 'cert'
+  # (e.g: cert.example.com)
+  principal_key = "cert"
+}
+
 locals {
   # Populates a mapping of principals
   # to attached created Vault Policies
   authorizations = [
     module.identity.authorizations,
     module.ldap.authorizations,
+    module.cert.authorizations,
   ]
 }

@@ -31,3 +31,8 @@ resource "vault_ldap_auth_backend" "this" {
   groupattr   = "memberOf"
 
 }
+
+resource "vault_auth_backend" "cert" {
+  path = "cert"
+  type = "cert"
+}
