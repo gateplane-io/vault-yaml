@@ -267,13 +267,22 @@ Examples:
 
 **4. Client Certificates (mTLS)**
 
-Format: `cert.<common_name>`
+Format: `cert.<common_name>[::ip_bind=true]`
 
 These principals reference Client Certificate Common Names of x509 Certificates authenticated through the "[TLS Certificates](https://developer.hashicorp.com/vault/docs/auth/cert)" Auth Method of Vault/OpenBao.
+
+`ip_bind`: This principal *extension* is used for machine attestation, such as Kubernetes Nodes, Crypto Validators, etc.
+Terraform resolves the domain found in principal's Common Name (IPv4 and IPv6 addresses) and allows the Vault / OpenBao tokens created by the principal's certificate to be used **only** by these IPs.
+
+> **Note:** The `ip_bind` extension **must not** be used for machines with non-static IP addresses. The Vault / OpenBao token created through an IP-bound certificate cannot be used outside the machine with the resolved IPs
+
+> **Note:** If the `ip_bind` extension is used, but the domain found in the principal cannot resolve, Terraform will fail. Additionally, it is possible to change the default DNS server of the Terraform runner by configuring [Terraform DNS Provider](https://registry.terraform.io/providers/hashicorp/dns/latest/docs)
+
 
 Examples:
 - `cert.example.com`
 - `cert.jdoe@mail.example.com`
+- `cert.node1.example.com::ip_bind=true`
 
 
 **5. JWT authentication** *(Work in Progress)*
