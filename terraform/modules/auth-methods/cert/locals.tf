@@ -14,19 +14,33 @@ locals {
   # in 'cert' entries, "cert.<common_name>",
   # e.g: cert.example.com
   authorizations = {
-    "common_names" = {
+    common_names = {
       for access in distinct([
-        # Only get 'cert' accesses
         for el in var.policies_list[*]["access"] : el
-        if split(".", el)[0] == var.principal_key
+        if split(".", split("::", el)[0])[0] == var.principal_key
       ]) :
-      # Get all the rest after the "<principal_key>."
-      replace(access, "/^${var.principal_key}\\./", "") => {
-        "policies" : [
-          for v in var.policies_list : v["key"]
-          if access == v["access"]
-        ]
-      }
+
+      # Extract domain (after "<principal_key>.")
+      replace(split("::", access)[0], "/^${var.principal_key}\\./", "") => merge(
+
+        # Existing policies block
+        {
+          policies = [
+            for v in var.policies_list : v["key"]
+            if access == v["access"]
+          ]
+        },
+
+        # Optional "::key=value,key2=value2" parsing
+        length(split("::", access)) > 1 ? {
+          for pair in split(",", split("::", access)[1]) :
+          split("=", pair)[0] => (
+            split("=", pair)[1] == "true" ? true :
+            split("=", pair)[1] == "false" ? false :
+            try(tonumber(split("=", pair)[1]), split("=", pair)[1])
+          )
+        } : {}
+      )
     }
   }
 }

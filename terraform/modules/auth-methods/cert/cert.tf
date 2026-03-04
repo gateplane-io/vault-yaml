@@ -20,4 +20,34 @@ resource "vault_cert_auth_backend_role" "cert" {
   # like CRL, allowed SANS,etc
 
   token_policies = [for p in each.value["policies"] : lower(p)]
+
+  # This allows usage of the created token ONLY by the IPs
+  # that the CN resolves to (IPv4 and IPv6)
+  token_bound_cidrs = (
+    try(each.value["ip_bind"], false) ?
+    flatten([
+      [for ipv4 in data.dns_a_record_set.ipv4[each.key].addrs : "${ipv4}/32"],
+      [for ipv6 in data.dns_aaaa_record_set.ipv6[each.key].addrs : "${ipv6}/128"],
+    ])
+    : null #["0.0.0.0/0", "::/0"]
+  )
+
+}
+
+data "dns_a_record_set" "ipv4" {
+  for_each = {
+    for cn, values in local.authorizations["common_names"] :
+    cn => values if try(values["ip_bind"], false)
+  }
+
+  host = each.key
+}
+
+data "dns_aaaa_record_set" "ipv6" {
+  for_each = {
+    for cn, values in local.authorizations["common_names"] :
+    cn => values if try(values["ip_bind"], false)
+  }
+
+  host = each.key
 }
