@@ -11,7 +11,7 @@
 resource "vault_cert_auth_backend_role" "cert" {
   for_each = local.authorizations["common_names"]
 
-  name          = each.key
+  name          = replace(each.key, "@", "-")
   certificate   = var.trusted_certificate
   backend       = var.mount.path
   allowed_names = [each.key]
