@@ -8,15 +8,7 @@
 # Use, modification, and redistribution permitted under the terms of the license,
 # except for providing this software as a commercial service or product.
 
-module "principal_parser" {
-  source = "../../helpers/principal-parser"
-
-  policies_list = var.policies_list
-  principal_key = var.principal_key
-}
-
-locals {
-  authorizations = {
-    common_names = module.principal_parser.principals
-  }
+output "principals" {
+  description = "Matching principals keyed by their prefix-free name, including segments, policies, and optional settings."
+  value       = local.principals
 }

@@ -8,32 +8,20 @@
 # Use, modification, and redistribution permitted under the terms of the license,
 # except for providing this software as a commercial service or product.
 
+module "principal_parser" {
+  source = "../../helpers/principal-parser"
+
+  policies_list = var.policies_list
+  principal_key = var.principal_key
+}
+
 locals {
-  # Parse Principal strings affecting this Auth Method.
-  # The 'principal_key' (default: 'kubernetes') is used as the prefix:
-  #   kubernetes.<namespace>.<service_account>
-  # e.g. kubernetes.default.external-secrets
+  # kubernetes.<namespace>.<service_account>
   authorizations = {
-    for access in distinct([
-      for el in var.policies_list[*]["access"] : el
-      if startswith(split("::", el)[0], "${var.principal_key}.")
-    ]) :
-    replace(split("::", access)[0], "/^${var.principal_key}\\./", "") => merge(
-      {
-        policies = [
-          for v in var.policies_list : v["key"]
-          if access == v["access"]
-        ]
-        namespace       = split(".", split("::", access)[0])[1]
-        service_account = split(".", split("::", access)[0])[2]
-      },
-      length(split("::", access)) > 1 ? {
-        for pair in split(",", split("::", access)[1]) :
-        split("=", pair)[0] => try(
-          jsondecode(split("=", pair)[1]),
-          split("=", pair)[1]
-        )
-      } : {}
-    )
+    for principal, authorization in module.principal_parser.principals :
+    principal => merge(authorization, {
+      namespace       = authorization.parts[0]
+      service_account = authorization.parts[1]
+    })
   }
 }

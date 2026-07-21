@@ -8,59 +8,34 @@
 # Use, modification, and redistribution permitted under the terms of the license,
 # except for providing this software as a commercial service or product.
 
+module "principal_parser" {
+  source = "../../helpers/principal-parser"
+
+  policies_list = var.policies_list
+  principal_key = var.principal_key
+}
+
 locals {
   authorizations = {
-    "entity_names" = {
-      for access in distinct([
-        # Only get LDAP accesses
-        for el in var.policies_list[*]["access"] : el
-        if split(".", el)[0] == var.principal_key && split(".", el)[1] == "entity_name"
-      ]) :
-      split(".", access)[2] => {
-        "policies" : [
-          for v in var.policies_list : v["key"]
-          if access == v["access"]
-        ]
-      }
-    },
-    "entity_ids" = {
-      for access in distinct([
-        # Only get LDAP accesses
-        for el in var.policies_list[*]["access"] : el
-        if split(".", el)[0] == var.principal_key && split(".", el)[1] == "entity_id"
-      ]) :
-      split(".", access)[2] => {
-        "policies" : [
-          for v in var.policies_list : v["key"]
-          if access == v["access"]
-        ]
-      }
-    },
-    "group_ids" = {
-      for access in distinct([
-        # Only get LDAP accesses
-        for el in var.policies_list[*]["access"] : el
-        if split(".", el)[0] == var.principal_key && split(".", el)[1] == "group_id"
-      ]) :
-      split(".", access)[2] => {
-        "policies" : [
-          for v in var.policies_list : v["key"]
-          if access == v["access"]
-        ]
-      }
-    },
-    "group_names" = {
-      for access in distinct([
-        # Only get LDAP accesses
-        for el in var.policies_list[*]["access"] : el
-        if split(".", el)[0] == var.principal_key && split(".", el)[1] == "group_name"
-      ]) :
-      split(".", access)[2] => {
-        "policies" : [
-          for v in var.policies_list : v["key"]
-          if access == v["access"]
-        ]
-      }
-    },
+    entity_names = {
+      for _, authorization in module.principal_parser.principals :
+      authorization.parts[1] => authorization
+      if authorization.parts[0] == "entity_name"
+    }
+    entity_ids = {
+      for _, authorization in module.principal_parser.principals :
+      authorization.parts[1] => authorization
+      if authorization.parts[0] == "entity_id"
+    }
+    group_ids = {
+      for _, authorization in module.principal_parser.principals :
+      authorization.parts[1] => authorization
+      if authorization.parts[0] == "group_id"
+    }
+    group_names = {
+      for _, authorization in module.principal_parser.principals :
+      authorization.parts[1] => authorization
+      if authorization.parts[0] == "group_name"
+    }
   }
 }

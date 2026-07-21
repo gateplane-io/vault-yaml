@@ -8,37 +8,24 @@
 # Use, modification, and redistribution permitted under the terms of the license,
 # except for providing this software as a commercial service or product.
 
+module "principal_parser" {
+  source = "../../helpers/principal-parser"
+
+  policies_list = var.policies_list
+  principal_key = var.principal_key
+}
+
 locals {
-  # Parse Principal strings affecting this Auth Method
-  # The 'principal_key' (default: 'ldap') is used as prefix for Principals
-  # in 'access' entries,
-  # e.g: ldap.users.someuser or ldap.groups.Everyone
   authorizations = {
-    "groups" = {
-      for access in distinct([
-        # Only get LDAP accesses
-        for el in var.policies_list[*]["access"] : el
-        if split(".", el)[0] == var.principal_key && split(".", el)[1] == "groups"
-      ]) :
-      split(".", access)[2] => {
-        "policies" : [
-          for v in var.policies_list : v["key"]
-          if access == v["access"]
-        ]
-      }
-    },
-    "users" = {
-      for access in distinct([
-        # Only get LDAP accesses
-        for el in var.policies_list[*]["access"] : el
-        if split(".", el)[0] == var.principal_key && split(".", el)[1] == "users"
-      ]) :
-      split(".", access)[2] => {
-        "policies" : [
-          for v in var.policies_list : v["key"]
-          if access == v["access"]
-        ]
-      }
+    groups = {
+      for _, authorization in module.principal_parser.principals :
+      authorization.parts[1] => authorization
+      if authorization.parts[0] == "groups"
+    }
+    users = {
+      for _, authorization in module.principal_parser.principals :
+      authorization.parts[1] => authorization
+      if authorization.parts[0] == "users"
     }
   }
 }

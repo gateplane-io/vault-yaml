@@ -8,15 +8,12 @@
 # Use, modification, and redistribution permitted under the terms of the license,
 # except for providing this software as a commercial service or product.
 
-module "principal_parser" {
-  source = "../../helpers/principal-parser"
-
-  policies_list = var.policies_list
-  principal_key = var.principal_key
+variable "policies_list" {
+  description = "Collection of policy mappings containing `key` and `access` attributes."
+  type        = any
 }
 
-locals {
-  authorizations = {
-    common_names = module.principal_parser.principals
-  }
+variable "principal_key" {
+  description = "Principal prefix to select and remove, such as `ldap` or `kubernetes`."
+  type        = string
 }

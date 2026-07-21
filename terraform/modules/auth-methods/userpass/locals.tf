@@ -8,24 +8,15 @@
 # Use, modification, and redistribution permitted under the terms of the license,
 # except for providing this software as a commercial service or product.
 
+module "principal_parser" {
+  source = "../../helpers/principal-parser"
+
+  policies_list = var.policies_list
+  principal_key = var.principal_key
+}
+
 locals {
-  # Parse Principal strings affecting this Auth Method
-  # The 'principal_key' (default: 'ldap') is used as prefix for Principals
-  # in 'access' entries,
-  # e.g: ldap.users.someuser or ldap.groups.Everyone
   authorizations = {
-    "users" = {
-      for access in distinct([
-        # Only get 'userpass' accesses
-        for el in var.policies_list[*]["access"] : el
-        if split(".", el)[0] == var.principal_key
-      ]) :
-      split(".", access)[1] => {
-        "policies" : [
-          for v in var.policies_list : v["key"]
-          if access == v["access"]
-        ]
-      }
-    }
+    users = module.principal_parser.principals
   }
 }
