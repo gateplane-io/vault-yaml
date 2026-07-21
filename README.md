@@ -331,6 +331,13 @@ This configuration creates a policy from the template file [`roles/vault/secrets
 Your policy templates can access these pre-defined variables:
 - **`secrets_engines`** - A map of all configured secret engines and their mount paths
 - **`auth_methods`** - A map of all configured auth methods and their mount paths
+- **`policy_name`** - The generated Vault policy name
+- **`access`** - For `for_each: true`, the original complete principal string
+- **`access_name`** - For `for_each: true`, the principal's path-friendly semantic name
+
+`access_name` removes any `::` options, removes principal grammar prefixes, joins semantic components with `-`, replaces non-alphanumeric runs with `-`, trims edge hyphens, and preserves case. For example, `kubernetes.default.serviceaccount` becomes `default-serviceaccount`, `ldap.groups.Platform.Administrators` becomes `Platform-Administrators`, and `cert.test@example.com` becomes `test-example-com`. Templates must use `access_name` instead of splitting `access` themselves.
+
+For identity name principals, this readable template value does not change authorization behavior: Terraform still resolves the referenced entity or group name to its Vault ID before attaching policies.
 
 This lets you write policies that dynamically reference your infrastructure without hardcoding paths.
 
