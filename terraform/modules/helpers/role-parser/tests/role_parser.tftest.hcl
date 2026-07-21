@@ -102,8 +102,10 @@ run "expand_for_each_static_access_and_use_conditional_defaults" {
             for_each = true
             access = {
               static = [
-                "identity.entity.alpha",
-                "identity.entity.beta",
+                "identity.entity_name.Alpha.Team",
+                "identity.entity_id.1234-5678",
+                "kubernetes.default.serviceaccount",
+                "cert.test@example.com::ip_bind=true",
               ]
               conditional = {
                 requestors = ["group.requestors"]
@@ -117,8 +119,13 @@ run "expand_for_each_static_access_and_use_conditional_defaults" {
   }
 
   assert {
-    condition     = toset([for role in output.roles_list_static : role.key]) == toset(["database-app-postgres-alpha", "database-app-postgres-beta"])
-    error_message = "for_each roles should include the access identity in each generated static key."
+    condition = toset([for role in output.roles_list_static : role.key]) == toset([
+      "database-app-postgres-Alpha-Team",
+      "database-app-postgres-1234-5678",
+      "database-app-postgres-default-serviceaccount",
+      "database-app-postgres-test-example-com",
+    ])
+    error_message = "for_each roles should include each semantic, path-friendly access name in its generated static key."
   }
 
   assert {

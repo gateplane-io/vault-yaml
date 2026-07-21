@@ -52,7 +52,8 @@ Each policy in the output list contains:
 - `role_name`: The name of the role
 - `key`: Generated key for the policy
 - `resource_name`: Extracted resource name from the path
-- `access`: The access configuration
+- `access`: The original principal string for static entries
+- `access_name`: The principal's path-friendly semantic name for static entries; options and grammar prefixes are removed, semantic components are hyphen-joined, and non-alphanumeric runs are normalized to `-`
 - `type`: Either "regular" or "conditional"
 - Any additional fields specified in `field_defaults`
 

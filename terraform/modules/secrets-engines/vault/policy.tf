@@ -31,6 +31,7 @@ resource "vault_policy" "adhoc_for_each" {
       secret_engines = var.secret_engines,
       auth_methods   = var.auth_methods,
       access         = each.value["access"],
+      access_name    = each.value["access_name"],
       policy_name    = each.key,
     }
   )

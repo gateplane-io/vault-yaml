@@ -21,7 +21,7 @@ locals {
   # Keep the data relevant for Vault Policies (remove accesses)
   adhoc_policies = {
     for k in distinct([
-      for l in local.roles_list : merge([l, { "access" = null }]...)
+      for l in local.roles_list : merge([l, { "access" = null, "access_name" = null }]...)
     ]) : k["key"] => k
     if k["for_each"] == false
   }

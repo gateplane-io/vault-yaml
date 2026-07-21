@@ -42,7 +42,11 @@ run "templates_parsing_and_per_access_policies" {
           personal = {
             for_each = true
             access = {
-              static      = ["ldap.users.alice", "ldap.users.bob"]
+              static = [
+                "ldap.users.Platform.Admin",
+                "kubernetes.default.serviceaccount",
+                "cert.test@example.com::ip_bind=true",
+              ]
               conditional = {}
             }
           }
@@ -57,8 +61,13 @@ run "templates_parsing_and_per_access_policies" {
   }
 
   assert {
-    condition     = length(vault_policy.adhoc_for_each) == 2 && contains(keys(vault_policy.adhoc_for_each), "team-vault-personal-adhoc-alice") && contains(keys(vault_policy.adhoc_for_each), "team-vault-personal-adhoc-bob")
-    error_message = "for_each roles must create one policy per parsed access identity."
+    condition = (
+      length(vault_policy.adhoc_for_each) == 3 &&
+      contains(keys(vault_policy.adhoc_for_each), "team-vault-personal-adhoc-Platform-Admin") &&
+      contains(keys(vault_policy.adhoc_for_each), "team-vault-personal-adhoc-default-serviceaccount") &&
+      contains(keys(vault_policy.adhoc_for_each), "team-vault-personal-adhoc-test-example-com")
+    )
+    error_message = "for_each roles must create one policy per principal-derived, path-friendly access name."
   }
 
   assert {
@@ -67,12 +76,21 @@ run "templates_parsing_and_per_access_policies" {
   }
 
   assert {
-    condition     = strcontains(vault_policy.adhoc_for_each["team-vault-personal-adhoc-alice"].policy, "secret/data/alice") && strcontains(vault_policy.adhoc_for_each["team-vault-personal-adhoc-alice"].policy, "ldap/users/alice")
-    error_message = "Per-access templates must receive the parsed access and auth-method data."
+    condition = (
+      strcontains(vault_policy.adhoc_for_each["team-vault-personal-adhoc-Platform-Admin"].policy, "secret/data/Platform-Admin") &&
+      strcontains(vault_policy.adhoc_for_each["team-vault-personal-adhoc-default-serviceaccount"].policy, "secret/data/default-serviceaccount") &&
+      strcontains(vault_policy.adhoc_for_each["team-vault-personal-adhoc-test-example-com"].policy, "secret/data/test-example-com")
+    )
+    error_message = "Per-access templates must receive the semantic, normalized access name."
   }
 
   assert {
-    condition     = length(output.access_list) == 4 && toset([for access in output.access_list : access.key]) == toset(["team-vault-shared-adhoc", "team-vault-personal-adhoc-alice", "team-vault-personal-adhoc-bob"])
+    condition = length(output.access_list) == 5 && toset([for access in output.access_list : access.key]) == toset([
+      "team-vault-shared-adhoc",
+      "team-vault-personal-adhoc-Platform-Admin",
+      "team-vault-personal-adhoc-default-serviceaccount",
+      "team-vault-personal-adhoc-test-example-com",
+    ])
     error_message = "Access output must retain all parsed memberships and normalized keys."
   }
 }

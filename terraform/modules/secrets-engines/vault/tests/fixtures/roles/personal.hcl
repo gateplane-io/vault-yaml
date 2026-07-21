@@ -2,10 +2,10 @@
 # SPDX-License-Identifier: Elastic-2.0
 
 # ${policy_name}
-path "${secret_engines.kv.path}/data/${split(".", access)[2]}" {
+path "${secret_engines.kv.path}/data/${access_name}" {
   capabilities = ["read", "update"]
 }
 
-path "${auth_methods.ldap.path}/users/${split(".", access)[2]}" {
+path "${auth_methods.ldap.path}/users/${access_name}" {
   capabilities = ["read"]
 }

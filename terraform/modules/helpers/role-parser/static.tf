@@ -21,6 +21,27 @@ locals {
     if path == var.path
   }
 
+  static_accesses = distinct(flatten([
+    for _, values in local.accesses : [
+      for _, role in values["roles"] : try(role["access"]["static"], [])
+    ]
+  ]))
+
+  access_names = {
+    for access in local.static_accesses : access => trim(
+      replace(
+        join("-", slice(
+          split(".", split("::", access)[0]),
+          contains(["ldap", "identity"], split(".", split("::", access)[0])[0]) ? 2 : 1,
+          length(split(".", split("::", access)[0]))
+        )),
+        "/[^A-Za-z0-9]+/",
+        "-"
+      ),
+      "-"
+    )
+  }
+
   static_roles_list = flatten([
     for path, values in local.accesses : [
       for role_name, role in values["roles"] : flatten([
@@ -28,9 +49,10 @@ locals {
           {
             "path" : path,
             "role_name" : role_name,
-            "key" : "${local.name_prefix}${values["type"]}-${role_name}-${element(split("/", path), -1)}${try(role["for_each"], false) ? "-${split(".", access)[2]}" : ""}",
+            "key" : "${local.name_prefix}${values["type"]}-${role_name}-${element(split("/", path), -1)}${try(role["for_each"], false) ? "-${local.access_names[access]}" : ""}",
             "resource_name" : element(split("/", path), -1),
             "access" : access,
+            "access_name" : local.access_names[access],
           },
           {
             for k, v in var.field_defaults :
@@ -48,6 +70,7 @@ locals {
     for k in distinct([
       for l in flatten([local.roles_list, local.conditional_roles_list]) : merge([l, {
         "access"             = null,
+        "access_name"        = null,
         "access_requestors"  = null,
         "access_approvers"   = null,
         "access_conditional" = null,
