@@ -285,7 +285,18 @@ Examples:
 - `cert.node1.example.com::ip_bind=true`
 
 
-**5. JWT authentication** *(Work in Progress)*
+**5. Kubernetes Service Accounts**
+
+Format: `kubernetes.<namespace>.<service_account>`
+
+These principals reference Kubernetes Service Accounts, authenticated to Vault/OpenBao through the [Kubernetes Auth Method](https://developer.hashicorp.com/vault/docs/auth/kubernetes).
+
+Vault/OpenBao validates the Service Account token of a workload against the issuing Kubernetes cluster, and reads its JWT claims, that contain `namespace` and `serviceAccountName`.
+
+Example:
+- `kubernetes.secrets-management.external-secrets` - A Principal that will be allowed to access a read-only role in KV backend, presumably an [External Secrets Operator](https://external-secrets.io/latest/) deployment.
+
+**6. JWT authentication** *(Work in Progress)*
 
 Format: `jwt.<role>.<jwt-sub>`
 
