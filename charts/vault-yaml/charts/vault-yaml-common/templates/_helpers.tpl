@@ -79,6 +79,29 @@ spec:
 {{- toJson $parsed -}}
 {{- end -}}
 
+{{- define "vault-yaml.principalAccessName" -}}
+{{- $principal := required "vault-yaml.principalAccessName requires principal" .principal -}}
+{{- $base := first (splitList "::" $principal) -}}
+{{- $parts := splitList "." $base -}}
+{{- $raw := "" -}}
+{{- if and (ge (len $parts) 3) (eq (index $parts 0) "ldap") (has (index $parts 1) (list "users" "groups")) -}}
+{{- $raw = join "-" (slice $parts 2) -}}
+{{- else if and (ge (len $parts) 3) (eq (index $parts 0) "identity") (has (index $parts 1) (list "entity_id" "entity_name" "group_id" "group_name")) -}}
+{{- $raw = join "-" (slice $parts 2) -}}
+{{- else if and (eq (len $parts) 3) (eq (index $parts 0) "kubernetes") -}}
+{{- $raw = join "-" (slice $parts 1) -}}
+{{- else if and (ge (len $parts) 2) (eq (index $parts 0) "cert") -}}
+{{- $raw = join "-" (slice $parts 1) -}}
+{{- else if and (ge (len $parts) 2) (eq (index $parts 0) "userpass") -}}
+{{- $raw = join "-" (slice $parts 1) -}}
+{{- else -}}
+{{- fail (printf "cannot derive adhoc for_each accessName from unsupported or malformed principal %s" $principal) -}}
+{{- end -}}
+{{- $normalized := regexReplaceAll "[^A-Za-z0-9]+" $raw "-" | trimAll "-" -}}
+{{- if eq $normalized "" }}{{ fail (printf "principal %s produces an empty adhoc for_each accessName" $principal) }}{{ end -}}
+{{- $normalized -}}
+{{- end -}}
+
 {{- define "vault-yaml.adhocPolicy" -}}
 {{- $s := index .root.Values "_vaultYaml" -}}
 {{- $template := index $s.adhoc.policyTemplates .role -}}

@@ -505,14 +505,16 @@ The same policy is attached to every principal in `access.static`. `${accessName
 
 With `for_each: true`, the chart renders one policy for each item in `access.static` and attaches only that policy to that principal.
 
-For each principal, `accessName` is the **third dot-separated segment** of the complete principal string (zero-based index `2`):
+For each principal, the chart parses the principal grammar, removes any `::` options, selects its semantic identity, joins multi-part identities with `-`, and replaces every remaining non-alphanumeric run with `-`. Leading and trailing hyphens are removed; letter case is preserved.
 
 | Principal | `${accessName}` | Policy name for role `secrets-group` |
 | --- | --- | --- |
 | `ldap.groups.Administrators` | `Administrators` | `vault-secrets-group-adhoc-Administrators` |
-| `ldap.users.jdoe` | `jdoe` | `vault-secrets-group-adhoc-jdoe` |
-| `identity.group_id.2a91...` | `2a91...` | `vault-secrets-group-adhoc-2a91...` |
-| `kubernetes.default.external-secrets` | `external-secrets` | `vault-secrets-group-adhoc-external-secrets` |
+| `ldap.groups.Platform.Administrators` | `Platform-Administrators` | `vault-secrets-group-adhoc-Platform-Administrators` |
+| `identity.entity_name.Build.Bot` | `Build-Bot` | `vault-secrets-group-adhoc-Build-Bot` |
+| `identity.group_id.2a91...` | `2a91` | `vault-secrets-group-adhoc-2a91` |
+| `kubernetes.default.external-secrets` | `default-external-secrets` | `vault-secrets-group-adhoc-default-external-secrets` |
+| `cert.test@example.com` | `test-example-com` | `vault-secrets-group-adhoc-test-example-com` |
 
 The generated external Vault policy name is:
 
@@ -528,13 +530,20 @@ path "kvv2/data/vaults/teams/Administrators/*" {
 }
 ```
 
-Important constraints of the current implementation:
+Principal-specific extraction is:
 
-- A `for_each` principal must have at least three dot-separated segments. Otherwise `accessName` becomes empty.
-- Only the third segment is used. Additional segments are not included. For example, `ldap.groups.Platform.Admins` produces `Platform`, not `Platform.Admins`.
-- Principal option suffixes are not parsed before extraction. Avoid using `::...` options with `for_each` unless the resulting third segment is exactly the intended policy suffix and template value.
-- `accessName` is used verbatim in the external Vault policy name and policy body. It is not lowercased or sanitized there.
-- Different principals that produce the same `accessName` for the same role produce the same external policy name and Kubernetes object identity. Avoid such collisions.
+- LDAP users/groups: everything after `ldap.users.` or `ldap.groups.`.
+- Identity entities/groups: everything after `identity.entity_id.`, `identity.entity_name.`, `identity.group_id.`, or `identity.group_name.`.
+- Kubernetes: both `<namespace>` and `<serviceaccount>`.
+- Certificate: the complete common name after `cert.`.
+- Userpass: the complete username after `userpass.`.
+
+Identity name extraction affects only `accessName`. Terraform still resolves `identity.entity_name.*` and `identity.group_name.*` to their Vault IDs for policy attachment; Crossplane continues to warn because it supports identity attachment by ID only.
+
+Important constraints:
+
+- Unsupported or malformed principals fail Helm rendering when used by an ad-hoc `for_each` role.
+- Different principals can normalize to the same `accessName`; such entries collide for the same role. Avoid aliases that differ only by punctuation.
 - An empty `access.static` list produces no policy in `for_each` mode.
 
 Use short, collision-free principal names when a role enables `for_each`, and inspect the rendered policy names and HCL before installation.
@@ -755,7 +764,7 @@ Recommended workflow:
 - `userpass`, JWT, and OIDC principals are not rendered.
 - Unsupported, malformed, or disabled principal integrations warn rather than fail Helm rendering.
 - Unknown placeholders in ad-hoc HCL templates are left literal rather than rejected.
-- `for_each` derives `accessName` from only the third dot-separated principal segment and does not detect resulting policy-name collisions.
+- `for_each` normalizes semantic principal names but does not detect collisions where different principals normalize to the same `accessName`.
 - `type: vault` is operational only under the exact top-level key `adhoc`.
 - The chart does not create reconciliation dependencies on prerequisite Vault mounts or CAs; Crossplane retries until prerequisites are available.
 - Helm success is not proof of Crossplane or Vault reconciliation.

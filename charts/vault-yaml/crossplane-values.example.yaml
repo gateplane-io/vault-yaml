@@ -1,0 +1,66 @@
+_vaultYaml:
+  provider:
+    # Set true only when this Helm release should install provider-vault.
+    install: false
+    package: xpkg.upbound.io/upbound/provider-vault:v4.0.0
+    configRef: default
+    config:
+      # Set true only when this release should create the ProviderConfig.
+      create: false
+      name: default
+      address: https://vault.example.com:8200
+      skipTlsVerify: false
+      credentialsSecretRef:
+        namespace: crossplane-system
+        name: vault-provider-creds
+        key: credentials
+
+  # Mounts are prerequisites. Keys below must match accessFile paths exactly.
+  secrets:
+    pki:
+      mounts:
+        pki/org-ca:
+          issuerRef: default
+          templatedCommonNames:
+            email: '{{identity.entity.aliases.CONFIGURE_LDAP_ACCESSOR.name}}@my-org.example.com'
+
+    kubernetes:
+      mounts:
+        staging/cluster01:
+          roleDefinitions:
+            reader: |
+              rules:
+                - apiGroups: [""]
+                  resources: [pods]
+                  verbs: [get, list]
+          nameTemplate: '{{.DisplayName}}-{{.RoleName}}-{{unix_time}}s'
+          labels:
+            managed_by: vault
+
+    ssh:
+      mounts:
+        staging/vms:
+          allowedUsers: '{{identity.entity.aliases.CONFIGURE_LDAP_ACCESSOR.name}}'
+          defaultUser: '{{identity.entity.aliases.CONFIGURE_LDAP_ACCESSOR.name}}'
+
+  auth:
+    ldap:
+      enabled: true
+      backend: ldap
+    cert:
+      enabled: false
+      backend: cert
+      trustedCertificate: ""
+    kubernetes:
+      enabled: true
+      backend: kubernetes
+
+  conditionalAccess:
+    enabled: false
+    endpointPath: ""
+
+  adhoc:
+    parameters:
+      kvPath: kvv2
+      ldapAccessor: CONFIGURE_LDAP_ACCESSOR
+    policyTemplates: {}

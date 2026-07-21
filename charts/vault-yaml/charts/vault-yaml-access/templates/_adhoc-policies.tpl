@@ -12,11 +12,10 @@
 {{ include "vault-yaml.policyResource" (dict "root" $root "name" $policyName "path" "adhoc" "role" $roleName "policy" (include "vault-yaml.adhocPolicy" (dict "root" $root "role" $roleName "accessName" ""))) }}{{ println }}
 {{- end }}
 {{- range $principal := default (list) $access.static }}
-{{- $parts := splitList "." $principal -}}
 {{- $accessName := "" -}}
-{{- if ge (len $parts) 3 }}{{ $accessName = index $parts 2 }}{{ end -}}
 {{- $policyName := printf "vault-%s-adhoc" $roleName -}}
 {{- if default false $role.for_each }}
+{{- $accessName = include "vault-yaml.principalAccessName" (dict "principal" $principal) -}}
 {{- $policyName = printf "%s-%s" $policyName $accessName -}}
 ---
 {{ include "vault-yaml.policyResource" (dict "root" $root "name" $policyName "path" "adhoc" "role" $roleName "policy" (include "vault-yaml.adhocPolicy" (dict "root" $root "role" $roleName "accessName" $accessName))) }}{{ println }}
