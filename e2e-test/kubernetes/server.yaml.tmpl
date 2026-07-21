@@ -1,0 +1,50 @@
+# Copyright (C) 2026 Ioannis Torakis <john.torakis@gmail.com>
+# SPDX-License-Identifier: Elastic-2.0
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: root-token
+stringData:
+  token: {{printf "%q" .RootToken}}
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{.PodName}}
+  labels:
+    app: {{.PodName}}
+spec:
+  containers:
+    - name: server
+      image: {{.Image}}
+      imagePullPolicy: Always
+      env:
+        - name: {{.TokenVariable}}
+          valueFrom:
+            secretKeyRef:
+              name: root-token
+              key: token
+        - name: {{.CLITokenVariable}}
+          valueFrom:
+            secretKeyRef:
+              name: root-token
+              key: token
+        - name: {{.AddressVariable}}
+          value: http://127.0.0.1:8200
+      args:
+        - server
+        - -dev
+        - -dev-listen-address=0.0.0.0:8200
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{.PodName}}
+spec:
+  selector:
+    app: {{.PodName}}
+  ports:
+    - name: api
+      port: 8200
+      targetPort: 8200

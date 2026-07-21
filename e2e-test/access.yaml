@@ -1,0 +1,46 @@
+# Copyright (C) 2026 Ioannis Torakis <john.torakis@gmail.com>
+# SPDX-License-Identifier: Elastic-2.0
+
+pki/org-ca:
+  type: pki
+  roles:
+    web:
+      server_flag: true
+      client_flag: false
+      ttl: 600
+      allowed_domains: [example.test]
+      access:
+        static: &all_test_principals
+          - ldap.users.e2e-user
+          - ldap.groups.e2e-group
+          - identity.entity_name.e2e-entity
+          - identity.group_name.e2e-identity-group
+          - cert.e2e.example.test
+          - kubernetes.default.e2e-serviceaccount
+
+staging/cluster01:
+  type: kubernetes
+  roles:
+    admin:
+      namespaces: ["*"]
+      ttl: 600
+      ttl_max: 3600
+      access:
+        static: *all_test_principals
+
+staging/vms:
+  type: ssh
+  roles:
+    developer:
+      ttl: 60
+      ttl_max: 600
+      extensions: [permit-pty]
+      access:
+        static: *all_test_principals
+
+adhoc:
+  type: vault
+  roles:
+    secrets-personal:
+      access:
+        static: *all_test_principals

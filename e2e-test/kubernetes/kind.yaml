@@ -1,0 +1,7 @@
+# Copyright (C) 2026 Ioannis Torakis <john.torakis@gmail.com>
+# SPDX-License-Identifier: Elastic-2.0
+
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+networking:
+  apiServerAddress: 127.0.0.1
