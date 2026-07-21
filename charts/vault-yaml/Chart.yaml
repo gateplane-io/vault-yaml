@@ -1,0 +1,25 @@
+apiVersion: v2
+name: vault-yaml
+description: Render vault-yaml access definitions as Crossplane Vault managed resources.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+kubeVersion: ">=1.28.0-0"
+dependencies:
+  - name: vault-yaml-common
+    version: 0.1.0
+    repository: file://charts/vault-yaml-common
+  - name: vault-yaml-pki
+    version: 0.1.0
+    repository: file://charts/vault-yaml-pki
+  - name: vault-yaml-kubernetes
+    version: 0.1.0
+    repository: file://charts/vault-yaml-kubernetes
+  - name: vault-yaml-ssh
+    version: 0.1.0
+    repository: file://charts/vault-yaml-ssh
+  - name: vault-yaml-access
+    version: 0.1.0
+    repository: file://charts/vault-yaml-access
+annotations:
+  artifacthub.io/license: Elastic-2.0

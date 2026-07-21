@@ -1,0 +1,4 @@
+{{ include "vault-yaml-pki.render" . }}
+{{ include "vault-yaml-kubernetes.render" . }}
+{{ include "vault-yaml-ssh.render" . }}
+{{ include "vault-yaml-access.render" . }}

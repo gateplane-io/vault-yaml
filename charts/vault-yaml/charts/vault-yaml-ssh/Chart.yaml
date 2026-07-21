@@ -1,0 +1,5 @@
+apiVersion: v2
+name: vault-yaml-ssh
+description: SSH secrets-engine renderer library for vault-yaml.
+type: library
+version: 0.1.0

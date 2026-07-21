@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["accessFile"],
+  "properties": {
+    "accessFile": { "type": "string", "minLength": 1 },
+    "_vaultYaml": { "type": "object" },
+    "vault-yaml-common": { "type": "object" },
+    "vault-yaml-pki": { "type": "object" },
+    "vault-yaml-kubernetes": { "type": "object" },
+    "vault-yaml-ssh": { "type": "object" },
+    "vault-yaml-access": { "type": "object" }
+  },
+  "additionalProperties": false
+}

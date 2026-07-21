@@ -1,0 +1,14 @@
+vault-yaml rendered the access document into Crossplane managed resources.
+
+ProviderConfig: {{ (index .Values "_vaultYaml").provider.configRef }}
+Provider package: {{ (index .Values "_vaultYaml").provider.package }}
+
+Check reconciliation with:
+  kubectl get managed
+
+Important:
+- Terraform and Crossplane must not manage the same Vault objects concurrently.
+- External Vault resources are orphaned by default when managed resources are deleted.
+- All secrets-engine and auth-method mounts must already exist. This chart never creates mounts, backends, root CAs, or SSH CAs.
+- Kubernetes type entries configure roles in an existing Vault Kubernetes secrets engine only. This chart does not create the Kubernetes auth method.
+- Inspect the generated vault-yaml render warnings ConfigMap. Conditional access, disabled auth integrations, and unsupported principals are reported there.

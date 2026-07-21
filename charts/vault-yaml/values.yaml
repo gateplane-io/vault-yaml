@@ -1,0 +1,116 @@
+# The vault-yaml access document is intentionally not embedded in chart values.
+# Supply it as a string:
+#   --set-file accessFile=access.yaml
+accessFile: ""
+
+_vaultYaml:
+  # Crossplane/provider bootstrap is optional. Existing installations should keep
+  # both creation flags disabled and set provider.configRef.
+  provider:
+    install: false
+    package: xpkg.upbound.io/upbound/provider-vault:v4.0.0
+    configRef: default
+    config:
+      create: false
+      name: default
+      address: https://vault.example.com:8200
+      skipTlsVerify: false
+      credentialsSecretRef:
+        namespace: crossplane-system
+        name: vault-provider-creds
+        key: credentials
+
+  lifecycle:
+    deletionPolicy: Orphan
+    managementPolicies:
+      - Create
+      - Observe
+      - Update
+      - LateInitialize
+
+  # Every mount referenced by accessFile must already exist and have one matching
+  # entry below. These settings configure roles within, but never create, mounts.
+  secrets:
+    pki:
+      mounts:
+        pki/org-ca:
+          issuerRef: default
+          templatedCommonNames:
+            email: '{{identity.entity.aliases.CONFIGURE_LDAP_ACCESSOR.name}}@my-org.example.com'
+
+    kubernetes:
+      mounts:
+        staging/cluster01:
+          roleDefinitions:
+            admin: |
+              rules:
+                - apiGroups: ["*"]
+                  resources: ["*"]
+                  verbs: ["*"]
+            deployer: &deployerRules |
+              rules:
+                - apiGroups: ["apps", "extensions"]
+                  resources: [deployments, statefulsets, daemonsets]
+                  verbs: [get, list, create, update, patch, delete]
+                - apiGroups: [""]
+                  resources: [pods, services, configmaps, persistentvolumeclaims]
+                  verbs: [get, list, create, update, patch, delete]
+                - apiGroups: ["networking.k8s.io"]
+                  resources: [ingresses]
+                  verbs: [get, list, create, update, patch, delete]
+                - apiGroups: ["autoscaling"]
+                  resources: [horizontalpodautoscalers]
+                  verbs: [get, list, create, update, patch, delete]
+                - apiGroups: ["batch"]
+                  resources: [jobs, cronjobs]
+                  verbs: [get, list, create, update, patch, delete]
+            bot-deploy: *deployerRules
+          nameTemplate: '{{.DisplayName | replace "_" "-" | replace " " ""}}-{{.RoleName | replace "_" "-"}}-{{unix_time}}s'
+          labels:
+            managed_by: vault
+
+    ssh:
+      mounts:
+        staging/vms:
+          allowedUsers: '{{identity.entity.aliases.CONFIGURE_LDAP_ACCESSOR.name}}'
+          defaultUser: '{{identity.entity.aliases.CONFIGURE_LDAP_ACCESSOR.name}}'
+
+  auth:
+    ldap:
+      enabled: true
+      backend: ldap
+    identity:
+      enabled: true
+    cert:
+      enabled: false
+      backend: cert
+      trustedCertificate: ""
+    kubernetes:
+      enabled: true
+      backend: kubernetes
+
+  conditionalAccess:
+    enabled: false
+    endpointPath: ""
+
+  adhoc:
+    parameters:
+      kvPath: kvv2
+      ldapAccessor: CONFIGURE_LDAP_ACCESSOR
+    policyTemplates:
+      secrets-personal: |
+        # Personal secrets
+        path "${kvPath}/data/vaults/personal/{{identity.entity.aliases.${ldapAccessor}.metadata.name}}/*" {
+          capabilities = ["create", "update", "patch", "read", "delete"]
+        }
+        path "${kvPath}/metadata/vaults/personal/{{identity.entity.aliases.${ldapAccessor}.metadata.name}}/*" {
+          capabilities = ["list"]
+        }
+      secrets-group: |
+        # Group secrets
+        path "${kvPath}/data/vaults/teams/${accessName}/*" {
+          capabilities = ["create", "update", "patch", "read", "delete"]
+        }
+        path "${kvPath}/metadata/vaults/teams/${accessName}/*" {
+          capabilities = ["list"]
+        }

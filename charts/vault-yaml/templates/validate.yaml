@@ -1,0 +1,7 @@
+{{- $accesses := fromYaml (include "vault-yaml.accesses" .) -}}
+{{- range $path, $entry := $accesses }}
+{{- if not (kindIs "map" $entry) }}{{ fail (printf "accessFile top-level entry %s must be an object" $path) }}{{ end }}
+{{- if not (hasKey $entry "type") }}{{ fail (printf "accessFile top-level entry %s must define type" $path) }}{{ end }}
+{{- if not (has $entry.type (list "pki" "kubernetes" "ssh" "vault")) }}{{ fail (printf "accessFile top-level entry %s has unsupported type %s" $path $entry.type) }}{{ end }}
+{{- if not (hasKey $entry "roles") }}{{ fail (printf "accessFile top-level entry %s must define roles" $path) }}{{ end }}
+{{- end }}

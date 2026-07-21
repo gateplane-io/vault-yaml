@@ -1,0 +1,23 @@
+{{- $s := index .Values "_vaultYaml" -}}
+{{- if $s.provider.install }}
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: upbound-provider-vault
+spec:
+  package: {{ $s.provider.package | quote }}
+{{- end }}
+{{- if $s.provider.config.create }}
+---
+apiVersion: vault.upbound.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: {{ $s.provider.config.name }}
+spec:
+  address: {{ required "_vaultYaml.provider.config.address is required" $s.provider.config.address | quote }}
+  skip_tls_verify: {{ default false $s.provider.config.skipTlsVerify }}
+  credentials:
+    source: Secret
+    secretRef:
+{{ toYaml $s.provider.config.credentialsSecretRef | indent 6 }}
+{{- end }}
