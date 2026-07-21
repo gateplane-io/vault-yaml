@@ -25,7 +25,12 @@ By defining secret engines, roles, policies, and access control in a single, hum
 - **Reduced complexity** – Avoid the steep learning curve and many configuration paths of native Vault
 - **GitOps-friendly** – Version control your entire access model alongside your infrastructure
 
-The YAML schema is consumed by Terraform modules located in `/terraform/modules`, with working examples available in `/terraform`.
+The same access document can be reconciled through either:
+
+- **Terraform**, using the modules under [`terraform/modules`](terraform/modules) and the working configuration under [`terraform`](terraform).
+- **Crossplane**, using the Helm chart under [`charts/vault-yaml`](charts/vault-yaml), which renders Upbound `provider-vault` managed resources.
+
+Terraform and Crossplane are alternative owners of the same desired Vault configuration. Never run both reconcilers against the same Vault objects concurrently. Crossplane support currently has documented feature limitations; see the [chart README](charts/vault-yaml/README.md) for its exact support matrix, prerequisites, and operational values.
 
 ## 📑 Table of Contents
 
@@ -42,6 +47,7 @@ The YAML schema is consumed by Terraform modules located in `/terraform/modules`
   - [Authentication and *Principals*](#authentication-and-principals)
   - [`adhoc` - Ad-Hoc Vault Policies](#adhoc---ad-hoc-vault-policies)
 - [🚀 Getting Started](#-getting-started)
+  - [Choose a reconciler](#choose-a-reconciler)
   - [Prerequisites](#prerequisites)
   - [Starting fresh](#starting-fresh)
   - [Bring Your Own Vault (BYOV)](#bring-your-own-vault-byov)
@@ -354,14 +360,42 @@ See [`terraform/main.tf#L66`](https://github.com/gateplane-io/vault-yaml/blob/ma
 
 ## 🚀 Getting Started
 
+### Choose a reconciler
+
+Use exactly one reconciler for each external Vault object.
+
+#### Terraform
+
+Terraform consumes the access document with `yamldecode` and uses the modules under [`terraform/modules`](terraform/modules). This remains the path with the broadest feature support, including GatePlane conditional access and identity lookup by name.
+
+#### Crossplane
+
+The Helm chart accepts the same unmodified access document through `--set-file` and renders Crossplane managed resources:
+
+```bash
+helm upgrade --install vault-yaml charts/vault-yaml \
+  --namespace vault-system \
+  --create-namespace \
+  --values crossplane-values.yaml \
+  --set-file accessFile=access.yaml
+```
+
+Crossplane deployment settings (including existing mount details, auth integrations, provider references, Kubernetes role definitions, and ad-hoc policy templates) are supplied separately under the key `_vaultYaml`.
+
+Do not pass the access document directly with Helm `-f`, rather set it to the `accessFile` key as raw string.
+
+See [`charts/vault-yaml/README.md`](charts/vault-yaml/README.md) before installation. It documents supported principals, generated resources, provider setup, lifecycle defaults, render warnings, and current gaps such as conditional-access reconciliation and identity lookup by name.
+
 ### Prerequisites
 
-Before using `vault-yaml`, ensure you have:
+All deployments require:
 
-- **Terraform** (v1.0+) installed and configured
-- **Vault or OpenBao** server running and accessible
-- **Terraform Vault provider** configured with authentication to your Vault/OpenBao instance
-- Basic understanding of Vault concepts (secret engines, auth methods, policies)
+- A Vault or OpenBao server that is running and accessible.
+- Existing secrets-engine and auth-method mounts used by the access document.
+
+Terraform additionally requires Terraform and the Terraform Vault provider configured with suitable authentication.
+
+Crossplane additionally requires Kubernetes, Helm, Crossplane, the [Upbound `provider-vault`](https://github.com/upbound/provider-vault) CRDs, and a suitable `ProviderConfig`. The chart can optionally render the provider package and `ProviderConfig`, but it does not install Crossplane or create Vault mounts.
 
 ### Starting fresh
 
@@ -439,7 +473,7 @@ After applying the configuration, run `terraform output gateplane_services_outpu
 - Policies associated with those roles
 - Role-to-principal assignments (who can use which role)
 - Ad-hoc Vault policies defined in templates
-- Conditional access using GatePlane plugins transparently
+- Conditional access using GatePlane plugins (*currently through the Terraform reconciler only*)
 
 ❌ **Managed separately (not by `vault-yaml`):**
 - Vault/OpenBao server configuration
