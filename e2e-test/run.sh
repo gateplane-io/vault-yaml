@@ -4,8 +4,6 @@
 
 set -eu
 
-
-
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 
-exec go -C "$script_dir" test -tags=e2e -v -count=1 -timeout "${E2E_TIMEOUT:-30m}" .
+exec go -C "$script_dir" test -tags=e2e -v -count=1 -timeout "${E2E_TIMEOUT:-60m}" .

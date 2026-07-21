@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 )
 
 // Target describes one Vault-compatible server under test.
@@ -19,9 +20,14 @@ type Target struct {
 
 // Config contains settings shared by all matrix entries.
 type Config struct {
-	RootToken    string
-	ContainerCLI string
-	Targets      []Target
+	RootToken            string
+	ContainerCLI         string
+	Reconciler           string
+	CrossplaneVersion    string
+	ProviderVaultPackage string
+	CrossplaneTimeout    time.Duration
+	CommandTimeout       time.Duration
+	Targets              []Target
 }
 
 // LoadConfig reads and validates the E2E environment.
@@ -48,7 +54,30 @@ func LoadConfig() (Config, error) {
 		return Config{}, fmt.Errorf("E2E_TARGET must be vault, openbao, or both; got %q", selection)
 	}
 
-	return Config{RootToken: token, ContainerCLI: envOr("E2E_CONTAINER_CLI", "podman"), Targets: targets}, nil
+	reconciler := strings.ToLower(envOr("E2E_RECONCILER", "terraform"))
+	if reconciler != "terraform" && reconciler != "crossplane" {
+		return Config{}, fmt.Errorf("E2E_RECONCILER must be terraform or crossplane; got %q", reconciler)
+	}
+
+	providerVersion := envOr("E2E_PROVIDER_VAULT_VERSION", "v4.0.0")
+	crossplaneTimeout, err := time.ParseDuration(envOr("E2E_CROSSPLANE_TIMEOUT", "20m"))
+	if err != nil || crossplaneTimeout <= 0 {
+		return Config{}, fmt.Errorf("E2E_CROSSPLANE_TIMEOUT must be a positive duration")
+	}
+	commandTimeout, err := time.ParseDuration(envOr("E2E_COMMAND_TIMEOUT", "25m"))
+	if err != nil || commandTimeout <= 0 {
+		return Config{}, fmt.Errorf("E2E_COMMAND_TIMEOUT must be a positive duration")
+	}
+	return Config{
+		RootToken:            token,
+		ContainerCLI:         envOr("E2E_CONTAINER_CLI", "podman"),
+		Reconciler:           reconciler,
+		CrossplaneVersion:    envOr("E2E_CROSSPLANE_VERSION", "2.3.3"),
+		ProviderVaultPackage: "xpkg.upbound.io/upbound/provider-vault:" + providerVersion,
+		CrossplaneTimeout:    crossplaneTimeout,
+		CommandTimeout:       commandTimeout,
+		Targets:              targets,
+	}, nil
 }
 
 func envOr(name, fallback string) string {

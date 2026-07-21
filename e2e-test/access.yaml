@@ -8,7 +8,12 @@ pki/org-ca:
       server_flag: true
       client_flag: false
       ttl: 600
-      allowed_domains: [example.test]
+      organization: [E2E Org]
+      country: [GR]
+      locality: [Athens]
+      allowed_domains: [example.test, dev.example.test]
+      allow_glob_domains: true
+      key_usage: [DigitalSignature, KeyEncipherment]
       access:
         static: &all_test_principals
           - ldap.users.e2e-user
@@ -17,6 +22,18 @@ pki/org-ca:
           - identity.group_name.e2e-identity-group
           - cert.e2e.example.test
           - kubernetes.default.e2e-serviceaccount
+    client-generate:
+      client_flag: true
+      server_flag: false
+      ttl: 1200
+      organization: [E2E Org]
+      country: [GR]
+      locality: [Athens]
+      templated_common_name: [email]
+      key_usage: [DigitalSignature, KeyEncipherment]
+      access:
+        static:
+          - ldap.groups.e2e-pki-clients
 
 staging/cluster01:
   type: kubernetes
@@ -27,6 +44,20 @@ staging/cluster01:
       ttl_max: 3600
       access:
         static: *all_test_principals
+    deployer:
+      namespaces: [application, stress-test1, playground]
+      ttl: 600
+      ttl_max: 3600
+      access:
+        static:
+          - ldap.groups.e2e-developers
+    bot-deploy:
+      namespaces: [application]
+      ttl: 600
+      ttl_max: 1800
+      access:
+        static:
+          - ldap.users.e2e-cicd
 
 staging/vms:
   type: ssh
@@ -37,6 +68,18 @@ staging/vms:
       extensions: [permit-pty]
       access:
         static: *all_test_principals
+    admin:
+      ttl: 120
+      ttl_max: 1200
+      extensions:
+        - permit-pty
+        - permit-port-forwarding
+        - permit-agent-forwarding
+        - permit-user-rc
+        - permit-X11-forwarding
+      access:
+        static:
+          - ldap.groups.e2e-admins
 
 adhoc:
   type: vault
@@ -44,3 +87,9 @@ adhoc:
     secrets-personal:
       access:
         static: *all_test_principals
+    secrets-group:
+      for_each: true
+      access:
+        static:
+          - ldap.groups.e2e-group
+          - ldap.groups.e2e-admins

@@ -1,0 +1,81 @@
+_vaultYaml:
+  provider:
+    install: false
+    configRef: default
+    config:
+      create: true
+      name: default
+      address: http://vault-compatible:8200
+      skipTlsVerify: true
+      credentialsSecretRef:
+        namespace: crossplane-system
+        name: vault-provider-creds
+        key: credentials
+  lifecycle:
+    deletionPolicy: Delete
+    managementPolicies: [Create, Observe, Update, LateInitialize, Delete]
+
+  secrets:
+    pki:
+      mounts:
+        pki/org-ca:
+          issuerRef: default
+          templatedCommonNames:
+            email: '{{identity.entity.name}}@example.test'
+    kubernetes:
+      mounts:
+        staging/cluster01:
+          roleDefinitions:
+            admin: |
+              rules:
+                - apiGroups: ["*"]
+                  resources: ["*"]
+                  verbs: ["*"]
+            deployer: |
+              rules:
+                - apiGroups: ["", "apps"]
+                  resources: ["configmaps", "deployments", "pods"]
+                  verbs: ["get", "list", "watch", "create", "update", "patch"]
+            bot-deploy: |
+              rules:
+                - apiGroups: ["apps"]
+                  resources: ["deployments"]
+                  verbs: ["get", "list", "update", "patch"]
+          nameTemplate: '{{.DisplayName}}-{{.RoleName}}-{{unix_time}}s'
+          labels:
+            managed_by: vault
+    ssh:
+      mounts:
+        staging/vms:
+          allowedUsers: '*'
+          defaultUser: root
+
+  auth:
+    ldap:
+      enabled: true
+      backend: ldap
+    identity:
+      enabled: false
+    cert:
+      enabled: false
+    kubernetes:
+      enabled: true
+      backend: kubernetes
+
+  conditionalAccess:
+    enabled: false
+    endpointPath: ""
+
+  adhoc:
+    parameters:
+      kvPath: kvv2
+      ldapAccessor: unused
+    policyTemplates:
+      secrets-personal: |
+        path "${kvPath}/data/vaults/personal/*" {
+          capabilities = ["create", "update", "patch", "read", "delete"]
+        }
+      secrets-group: |
+        path "${kvPath}/data/vaults/teams/${accessName}/*" {
+          capabilities = ["create", "update", "patch", "read", "delete"]
+        }

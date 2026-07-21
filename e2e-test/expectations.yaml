@@ -3,94 +3,241 @@
 #
 # Commands run through the Vault/OpenBao CLI inside the server pod.
 # Assertions use dot-separated paths into each command's JSON output.
+# `reconciler` defaults to `both`; use it only for implementation-specific behavior.
 
 expectations:
-  - name: PKI mount exists
+  # Shared prerequisite health
+  - name: KV v2 prerequisite mount exists
+    command: [read, -format=json, sys/mounts/kvv2]
+    assertions:
+      data.type: kv
+      data.options.version: "2"
+
+  - name: PKI prerequisite mount exists at a nested path
     command: [read, -format=json, sys/mounts/pki/org-ca]
     assertions:
       data.type: pki
+      data.description: E2E root CA prerequisite
 
-  - name: Kubernetes secrets mount exists
+  - name: Kubernetes secrets prerequisite mount exists at a nested path
     command: [read, -format=json, sys/mounts/staging/cluster01]
     assertions:
       data.type: kubernetes
+      data.description: E2E Kubernetes secrets prerequisite
 
-  - name: SSH mount exists
+  - name: SSH prerequisite mount exists at a nested path
     command: [read, -format=json, sys/mounts/staging/vms]
     assertions:
       data.type: ssh
+      data.description: E2E SSH CA prerequisite
 
-  - name: PKI role was generated
+  - name: LDAP prerequisite auth method exists
+    command: [read, -format=json, sys/auth/ldap]
+    assertions:
+      data.type: ldap
+
+  - name: Certificate prerequisite auth method exists
+    command: [read, -format=json, sys/auth/cert]
+    assertions:
+      data.type: cert
+
+  - name: Kubernetes prerequisite auth method exists
+    command: [read, -format=json, sys/auth/kubernetes]
+    assertions:
+      data.type: kubernetes
+
+  # PKI roles and generated policies
+  - name: PKI server role preserves documented fields
     command: [read, -format=json, pki/org-ca/roles/web]
     assertions:
       data.client_flag: false
       data.server_flag: true
-      data.allow_bare_domains: false
-
-  - name: Kubernetes secrets role was generated
-    command: [read, -format=json, staging/cluster01/roles/admin]
-    assertions:
-      data.kubernetes_role_type: ClusterRole
-      data.token_default_ttl: 600
-      data.token_max_ttl: 3600
-
-  - name: SSH role was generated
-    command: [read, -format=json, staging/vms/roles/developer]
-    assertions:
-      data.key_type: ca
-      data.allow_user_certificates: true
-      data.ttl: 60
+      data.ttl: 600
       data.max_ttl: 600
+      data.organization: [E2E Org]
+      data.country: [GR]
+      data.locality: [Athens]
+      data.allowed_domains: [example.test, dev.example.test]
+      data.allowed_domains_template: false
+      data.allow_bare_domains: false
+      data.allow_glob_domains: true
+      data.key_usage: [DigitalSignature, KeyEncipherment]
 
-  - name: PKI policy exists
+  - name: PKI templated client role preserves documented fields
+    command: [read, -format=json, pki/org-ca/roles/client-generate]
+    assertions:
+      data.client_flag: true
+      data.server_flag: false
+      data.ttl: 1200
+      data.max_ttl: 1200
+      data.organization: [E2E Org]
+      data.country: [GR]
+      data.locality: [Athens]
+      data.allowed_domains_template: true
+      data.allow_bare_domains: false
+      data.allow_glob_domains: false
+      data.key_usage: [DigitalSignature, KeyEncipherment]
+
+  - name: PKI server policy exists
     command: [read, -format=json, sys/policies/acl/pki-web-org-ca]
     assertions:
       data.name: pki-web-org-ca
 
-  - name: Kubernetes policy exists
+  - name: PKI client policy exists
+    command: [read, -format=json, sys/policies/acl/pki-client-generate-org-ca]
+    assertions:
+      data.name: pki-client-generate-org-ca
+
+  # Kubernetes secrets-engine roles and generated policies
+  - name: Kubernetes cluster administrator role preserves wildcard scope
+    command: [read, -format=json, staging/cluster01/roles/admin]
+    assertions:
+      data.allowed_kubernetes_namespaces: ["*"]
+      data.kubernetes_role_type: ClusterRole
+      data.token_default_ttl: 600
+      data.token_max_ttl: 3600
+      data.extra_labels.generated_from: staging/cluster01/admin
+
+  - name: Kubernetes deployer role preserves multiple namespace scope
+    command: [read, -format=json, staging/cluster01/roles/deployer]
+    assertions:
+      data.allowed_kubernetes_namespaces: [application, playground, stress-test1]
+      data.kubernetes_role_type: Role
+      data.token_default_ttl: 600
+      data.token_max_ttl: 3600
+      data.extra_labels.generated_from: staging/cluster01/deployer
+
+  - name: Kubernetes bot role preserves single namespace scope
+    command: [read, -format=json, staging/cluster01/roles/bot-deploy]
+    assertions:
+      data.allowed_kubernetes_namespaces: [application]
+      data.kubernetes_role_type: Role
+      data.token_default_ttl: 600
+      data.token_max_ttl: 1800
+      data.extra_labels.generated_from: staging/cluster01/bot-deploy
+
+  - name: Kubernetes administrator policy exists
     command: [read, -format=json, sys/policies/acl/kubernetes-admin-cluster01]
     assertions:
       data.name: kubernetes-admin-cluster01
 
-  - name: SSH policy exists
+  - name: Kubernetes deployer policy exists
+    command: [read, -format=json, sys/policies/acl/kubernetes-deployer-cluster01]
+    assertions:
+      data.name: kubernetes-deployer-cluster01
+
+  - name: Kubernetes bot policy exists
+    command: [read, -format=json, sys/policies/acl/kubernetes-bot-deploy-cluster01]
+    assertions:
+      data.name: kubernetes-bot-deploy-cluster01
+
+  # SSH CA roles and generated policies
+  - name: SSH developer role preserves default extension behavior
+    command: [read, -format=json, staging/vms/roles/developer]
+    assertions:
+      data.key_type: ca
+      data.allow_user_certificates: true
+      data.allowed_extensions: permit-pty
+      data.default_extensions.permit-pty: ""
+      data.ttl: 60
+      data.max_ttl: 600
+
+  - name: SSH administrator role preserves all documented extensions
+    command: [read, -format=json, staging/vms/roles/admin]
+    assertions:
+      data.key_type: ca
+      data.allow_user_certificates: true
+      data.allowed_extensions: permit-pty,permit-port-forwarding,permit-agent-forwarding,permit-user-rc,permit-X11-forwarding
+      data.default_extensions.permit-pty: ""
+      data.default_extensions.permit-port-forwarding: ""
+      data.default_extensions.permit-agent-forwarding: ""
+      data.default_extensions.permit-user-rc: ""
+      data.default_extensions.permit-X11-forwarding: ""
+      data.ttl: 120
+      data.max_ttl: 1200
+
+  - name: SSH developer policy exists
     command: [read, -format=json, sys/policies/acl/ssh-developer-vms]
     assertions:
       data.name: ssh-developer-vms
 
-  - name: Ad-hoc policy exists
+  - name: SSH administrator policy exists
+    command: [read, -format=json, sys/policies/acl/ssh-admin-vms]
+    assertions:
+      data.name: ssh-admin-vms
+
+  # Ad-hoc policy templates, including per-principal expansion
+  - name: Shared ad-hoc personal policy exists
     command: [read, -format=json, sys/policies/acl/vault-secrets-personal-adhoc]
     assertions:
       data.name: vault-secrets-personal-adhoc
 
-  - name: LDAP user policies were attached
+  - name: Per-principal ad-hoc group policy exists for the common group
+    command: [read, -format=json, sys/policies/acl/vault-secrets-group-adhoc-e2e-group]
+    assertions:
+      data.name: vault-secrets-group-adhoc-e2e-group
+
+  - name: Per-principal ad-hoc group policy exists for administrators
+    command: [read, -format=json, sys/policies/acl/vault-secrets-group-adhoc-e2e-admins]
+    assertions:
+      data.name: vault-secrets-group-adhoc-e2e-admins
+
+  # Static LDAP attachment and policy aggregation
+  - name: LDAP common user receives policies from every shared role
     command: [read, -format=json, auth/ldap/users/e2e-user]
     assertions:
       data.policies: [kubernetes-admin-cluster01, pki-web-org-ca, ssh-developer-vms, vault-secrets-personal-adhoc]
 
-  - name: LDAP group policies were attached
+  - name: LDAP common group receives shared and per-principal policies
     command: [read, -format=json, auth/ldap/groups/e2e-group]
     assertions:
-      data.policies: [kubernetes-admin-cluster01, pki-web-org-ca, ssh-developer-vms, vault-secrets-personal-adhoc]
+      data.policies: [kubernetes-admin-cluster01, pki-web-org-ca, ssh-developer-vms, vault-secrets-group-adhoc-e2e-group, vault-secrets-personal-adhoc]
 
-  - name: Identity entity policies were attached
+  - name: LDAP PKI client group receives only the client policy
+    command: [read, -format=json, auth/ldap/groups/e2e-pki-clients]
+    assertions:
+      data.policies: [pki-client-generate-org-ca]
+
+  - name: LDAP developer group receives only the deployer policy
+    command: [read, -format=json, auth/ldap/groups/e2e-developers]
+    assertions:
+      data.policies: [kubernetes-deployer-cluster01]
+
+  - name: LDAP CI user receives only the bot policy
+    command: [read, -format=json, auth/ldap/users/e2e-cicd]
+    assertions:
+      data.policies: [kubernetes-bot-deploy-cluster01]
+
+  - name: LDAP administrator group aggregates SSH and per-principal policies
+    command: [read, -format=json, auth/ldap/groups/e2e-admins]
+    assertions:
+      data.policies: [ssh-admin-vms, vault-secrets-group-adhoc-e2e-admins]
+
+  # Identity lookup by name is supported only by the Terraform reconciler.
+  - name: Identity entity by name receives every shared policy
+    reconciler: terraform
     command: [read, -format=json, identity/entity/name/e2e-entity]
     assertions:
       data.name: e2e-entity
       data.policies: [kubernetes-admin-cluster01, pki-web-org-ca, ssh-developer-vms, vault-secrets-personal-adhoc]
 
-  - name: Identity group policies were attached
+  - name: Identity group by name receives every shared policy
+    reconciler: terraform
     command: [read, -format=json, identity/group/name/e2e-identity-group]
     assertions:
       data.name: e2e-identity-group
       data.policies: [kubernetes-admin-cluster01, pki-web-org-ca, ssh-developer-vms, vault-secrets-personal-adhoc]
 
-  - name: Certificate auth role was generated
+  # Certificate and Kubernetes principals
+  - name: Certificate principal receives every shared policy
+    reconciler: terraform
     command: [read, -format=json, auth/cert/certs/e2e.example.test]
     assertions:
       data.display_name: e2e.example.test
+      data.allowed_names: [e2e.example.test]
       data.token_policies: [kubernetes-admin-cluster01, pki-web-org-ca, ssh-developer-vms, vault-secrets-personal-adhoc]
 
-  - name: Kubernetes auth role was generated
+  - name: Kubernetes service account principal receives every shared policy
     command: [read, -format=json, auth/kubernetes/role/default-e2e-serviceaccount]
     assertions:
       data.bound_service_account_names: [e2e-serviceaccount]

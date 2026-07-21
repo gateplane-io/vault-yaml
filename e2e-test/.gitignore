@@ -2,6 +2,6 @@
 # SPDX-License-Identifier: Elastic-2.0
 
 /e2e.log
-/terraform/*.tfstate
-/terraform/*.tfstate.*
-/terraform/.terraform/
+**/*.tfstate
+**/*.tfstate.*
+**/.terraform/

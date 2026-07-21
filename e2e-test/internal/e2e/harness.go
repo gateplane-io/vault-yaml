@@ -5,6 +5,7 @@ package e2e
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
 	"os"
@@ -30,13 +31,19 @@ type Harness struct {
 }
 
 func NewHarness(t *testing.T, config Config, target Target) *Harness {
-	cluster := fmt.Sprintf("vault-yaml-e2e-%s-%d", target.Name, time.Now().UnixNano())
+	cluster := fmt.Sprintf("vault-yaml-e2e-%s-%s-%d", target.Name, config.Reconciler, time.Now().Unix())
 	return &Harness{t: t, config: config, target: target, cluster: cluster}
 }
 
 func (h *Harness) Address() string { return h.address }
 
 func (h *Harness) TempDir() string { return h.tempDir }
+
+func (h *Harness) Context() string { return "kind-" + h.cluster }
+
+func (h *Harness) InClusterAddress() string {
+	return fmt.Sprintf("http://%s.default.svc:8200", h.target.PodName)
+}
 
 func (h *Harness) Start() error {
 	tempDir, err := os.MkdirTemp("", h.cluster+"-")
@@ -54,6 +61,12 @@ func (h *Harness) Start() error {
 		{name: "kubectl", args: []string{"version", "--client"}},
 		{name: "terraform", args: []string{"version"}},
 	}
+	if h.config.Reconciler == "crossplane" {
+		checks = append(checks, struct {
+			name string
+			args []string
+		}{name: "helm", args: []string{"version"}})
+	}
 	for _, check := range checks {
 		if _, err := h.run(check.name, check.args...); err != nil {
 			return fmt.Errorf("required command %q is unavailable: %w", check.name, err)
@@ -61,8 +74,8 @@ func (h *Harness) Start() error {
 	}
 
 	kindConfig := filepath.Join("kubernetes", "kind.yaml")
-	if _, err := h.runWithEnv([]string{"KIND_EXPERIMENTAL_PROVIDER=" + h.config.ContainerCLI}, "kind", "create", "cluster", "--name", h.cluster, "--config", kindConfig, "--wait", "120s"); err != nil {
-		return err
+	if output, err := h.runWithEnv([]string{"KIND_EXPERIMENTAL_PROVIDER=" + h.config.ContainerCLI}, "kind", "create", "cluster", "--name", h.cluster, "--config", kindConfig, "--wait", "120s"); err != nil {
+		return fmt.Errorf("create kind cluster: %w: %s", err, strings.TrimSpace(output))
 	}
 	h.created = true
 
@@ -155,6 +168,119 @@ func (h *Harness) startPortForward() error {
 	return fmt.Errorf("timed out waiting for port-forward")
 }
 
+// InstallCrossplane installs Crossplane, provider-vault, its credentials, and the
+// Vault-YAML chart. It waits for both package health and asynchronous managed
+// resource reconciliation.
+func (h *Harness) InstallCrossplane(accessFile, valuesFile, chartDir string) error {
+	contextName := h.Context()
+	commands := []struct {
+		name string
+		args []string
+	}{
+		{name: "helm", args: []string{"repo", "add", "crossplane-stable", "https://charts.crossplane.io/stable"}},
+		{name: "helm", args: []string{"repo", "update", "crossplane-stable"}},
+		{name: "helm", args: []string{"upgrade", "--install", "crossplane", "crossplane-stable/crossplane", "--kube-context", contextName, "--namespace", "crossplane-system", "--create-namespace", "--version", h.config.CrossplaneVersion, "--wait", "--timeout", h.config.CrossplaneTimeout.String()}},
+		{name: "kubectl", args: []string{"create", "secret", "generic", "vault-provider-creds", "--context", contextName, "--namespace", "crossplane-system", "--from-literal=credentials={\"token\":\"" + h.config.RootToken + "\"}"}},
+		{name: "kubectl", args: []string{"apply", "--context", contextName, "-f", "-"}},
+	}
+	providerManifest := fmt.Sprintf("apiVersion: pkg.crossplane.io/v1\nkind: Provider\nmetadata:\n  name: upbound-provider-vault\nspec:\n  package: %s\n", h.config.ProviderVaultPackage)
+	for i, command := range commands {
+		var output string
+		var err error
+		if i == len(commands)-1 {
+			output, err = h.runInput(providerManifest, command.name, command.args...)
+		} else {
+			output, err = h.run(command.name, command.args...)
+		}
+		if err != nil {
+			return fmt.Errorf("Crossplane bootstrap failed: %w: %s", err, strings.TrimSpace(output))
+		}
+	}
+	if output, err := h.run("kubectl", "wait", "--context", contextName, "--for=condition=Healthy", "provider.pkg.crossplane.io/upbound-provider-vault", "--timeout="+h.config.CrossplaneTimeout.String()); err != nil {
+		return fmt.Errorf("provider-vault did not become healthy: %w: %s\n%s", err, output, h.crossplaneDiagnostics())
+	}
+	if output, err := h.run("helm", "upgrade", "--install", "vault-yaml", chartDir, "--kube-context", contextName, "--namespace", "vault-system", "--create-namespace", "--values", valuesFile, "--set-file", "accessFile="+accessFile, "--set-string", "_vaultYaml.provider.config.address="+h.InClusterAddress()); err != nil {
+		return fmt.Errorf("install Vault-YAML chart: %w: %s", err, output)
+	}
+	return h.waitForManagedResources(h.config.CrossplaneTimeout)
+}
+
+func (h *Harness) waitForManagedResources(timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+	var last []string
+	for time.Now().Before(deadline) {
+		output, err := h.run("kubectl", "get", "managed", "--context", h.Context(), "--all-namespaces", "--selector", "app.kubernetes.io/instance=vault-yaml", "-o", "json")
+		if err == nil {
+			var list struct {
+				Items []struct {
+					Kind     string `json:"kind"`
+					Metadata struct {
+						Name string `json:"name"`
+					} `json:"metadata"`
+					Status struct {
+						Conditions []struct{ Type, Status, Reason, Message string } `json:"conditions"`
+					} `json:"status"`
+				} `json:"items"`
+			}
+			if json.Unmarshal([]byte(output), &list) == nil && len(list.Items) > 0 {
+				last = nil
+				for _, item := range list.Items {
+					ready, synced := false, false
+					for _, condition := range item.Status.Conditions {
+						if condition.Type == "Ready" && condition.Status == "True" {
+							ready = true
+						}
+						if condition.Type == "Synced" && condition.Status == "True" {
+							synced = true
+						}
+					}
+					if !ready || !synced {
+						conditions := make([]string, 0, len(item.Status.Conditions))
+						for _, condition := range item.Status.Conditions {
+							conditions = append(conditions, fmt.Sprintf("%s=%s reason=%s message=%q", condition.Type, condition.Status, condition.Reason, condition.Message))
+						}
+						last = append(last, fmt.Sprintf("%s/%s Ready=%t Synced=%t conditions=[%s]", item.Kind, item.Metadata.Name, ready, synced, strings.Join(conditions, ", ")))
+					}
+				}
+				if len(last) == 0 {
+					return nil
+				}
+			}
+		}
+		time.Sleep(5 * time.Second)
+	}
+	if len(last) == 0 {
+		last = []string{"no managed resources with label app.kubernetes.io/instance=vault-yaml were found"}
+	}
+	return fmt.Errorf("timed out waiting for managed resources: %s\n%s", strings.Join(last, "; "), h.crossplaneDiagnostics())
+}
+
+func (h *Harness) crossplaneDiagnostics() string {
+	commands := [][]string{
+		{"get", "providers.pkg.crossplane.io", "--context", h.Context(), "-o", "wide"},
+		{"get", "pods", "--context", h.Context(), "--all-namespaces", "-o", "wide"},
+		{"get", "managed", "--context", h.Context(), "--all-namespaces", "--selector", "app.kubernetes.io/instance=vault-yaml", "-o", "wide"},
+		{"get", "events", "--context", h.Context(), "--all-namespaces", "--sort-by=.lastTimestamp"},
+	}
+	var diagnostics strings.Builder
+	diagnostics.WriteString("Crossplane diagnostics:\n")
+	for _, args := range commands {
+		output, err := h.run("kubectl", args...)
+		diagnostics.WriteString("$ kubectl " + strings.Join(args, " ") + "\n")
+		diagnostics.WriteString(strings.TrimSpace(output) + "\n")
+		if err != nil {
+			diagnostics.WriteString("error: " + err.Error() + "\n")
+		}
+	}
+	return diagnostics.String()
+}
+
+func (h *Harness) CleanupCrossplane() {
+	if output, err := h.run("helm", "uninstall", "vault-yaml", "--kube-context", h.Context(), "--namespace", "vault-system", "--wait", "--timeout", "5m"); err != nil {
+		h.t.Errorf("uninstall Vault-YAML chart: %v: %s", err, output)
+	}
+}
+
 func (h *Harness) AssertAll(expectations []Expectation) []string {
 	var mismatches []string
 	for _, expectation := range expectations {
@@ -187,8 +313,24 @@ func (h *Harness) Cleanup() {
 func (h *Harness) run(name string, args ...string) (string, error) {
 	return h.runWithEnv(nil, name, args...)
 }
+
+func (h *Harness) runInput(input, name string, args ...string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), h.config.CommandTimeout)
+	defer cancel()
+	command := exec.CommandContext(ctx, name, args...)
+	command.Env = os.Environ()
+	command.Stdin = strings.NewReader(input)
+	output, err := command.CombinedOutput()
+	if ctx.Err() != nil {
+		return string(output), fmt.Errorf("%s timed out: %w", name, ctx.Err())
+	}
+	if err != nil {
+		return string(output), fmt.Errorf("%s %s: %w", name, strings.Join(args, " "), err)
+	}
+	return string(output), nil
+}
 func (h *Harness) runWithEnv(extraEnv []string, name string, args ...string) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), h.config.CommandTimeout)
 	defer cancel()
 	command := exec.CommandContext(ctx, name, args...)
 	command.Env = append(os.Environ(), extraEnv...)

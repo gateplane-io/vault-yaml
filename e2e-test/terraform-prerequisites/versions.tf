@@ -9,16 +9,14 @@
 # except for providing this software as a commercial service or product.
 
 terraform {
+  backend "local" {}
+
   required_version = ">= 1.5.0"
 
   required_providers {
     vault = {
       source  = "hashicorp/vault"
       version = ">= 4.0, < 6.0"
-    }
-    dns = {
-      source  = "hashicorp/dns"
-      version = "~> 3.5"
     }
   }
 }

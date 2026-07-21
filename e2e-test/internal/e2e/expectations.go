@@ -18,6 +18,7 @@ import (
 // Expectation describes one product CLI JSON request and its expected fields.
 type Expectation struct {
 	Name       string         `yaml:"name"`
+	Reconciler string         `yaml:"reconciler,omitempty"`
 	Command    []string       `yaml:"command"`
 	Assertions map[string]any `yaml:"assertions"`
 }
@@ -26,29 +27,52 @@ type expectationDocument struct {
 	Expectations []Expectation `yaml:"expectations"`
 }
 
-// ParseExpectations reads explicit assertions from the same accesses YAML file
-// consumed by Terraform.
+// ParseExpectations reads and validates the independent E2E assertion document.
 func ParseExpectations(path string) ([]Expectation, error) {
 	contents, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("read accesses file: %w", err)
+		return nil, fmt.Errorf("read expectations file: %w", err)
 	}
 	var document expectationDocument
 	if err := yaml.Unmarshal(contents, &document); err != nil {
-		return nil, fmt.Errorf("parse accesses file: %w", err)
+		return nil, fmt.Errorf("parse expectations file: %w", err)
 	}
 	if len(document.Expectations) == 0 {
-		return nil, fmt.Errorf("accesses file contains no expectations")
+		return nil, fmt.Errorf("expectations file contains no expectations")
 	}
-	for index, expectation := range document.Expectations {
+	names := make(map[string]struct{}, len(document.Expectations))
+	for index := range document.Expectations {
+		expectation := &document.Expectations[index]
 		if expectation.Name == "" || len(expectation.Command) == 0 || len(expectation.Assertions) == 0 {
 			return nil, fmt.Errorf("expectation %d must define name, command, and assertions", index)
+		}
+		if _, duplicate := names[expectation.Name]; duplicate {
+			return nil, fmt.Errorf("duplicate expectation name %q", expectation.Name)
+		}
+		names[expectation.Name] = struct{}{}
+		if expectation.Reconciler == "" {
+			expectation.Reconciler = "both"
+		}
+		if expectation.Reconciler != "both" && expectation.Reconciler != "terraform" && expectation.Reconciler != "crossplane" {
+			return nil, fmt.Errorf("expectation %q reconciler must be both, terraform, or crossplane; got %q", expectation.Name, expectation.Reconciler)
 		}
 	}
 	sort.Slice(document.Expectations, func(i, j int) bool {
 		return document.Expectations[i].Name < document.Expectations[j].Name
 	})
 	return document.Expectations, nil
+}
+
+// ExpectationsForReconciler returns expectations shared by both reconcilers or
+// explicitly assigned to the selected reconciler.
+func ExpectationsForReconciler(expectations []Expectation, reconciler string) []Expectation {
+	selected := make([]Expectation, 0, len(expectations))
+	for _, expectation := range expectations {
+		if expectation.Reconciler == "both" || expectation.Reconciler == reconciler {
+			selected = append(selected, expectation)
+		}
+	}
+	return selected
 }
 
 // AssertJSON checks all fields declared by one expectation and returns every
