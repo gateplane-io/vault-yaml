@@ -1,0 +1,7 @@
+# Copyright (C) 2025 Ioannis Torakis <john.torakis@gmail.com>
+# SPDX-License-Identifier: Elastic-2.0
+---
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "update"]
