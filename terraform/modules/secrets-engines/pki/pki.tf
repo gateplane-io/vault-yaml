@@ -30,7 +30,7 @@ resource "vault_pki_secret_backend_role" "this" {
   ext_key_usage = each.value["ext_key_usage"]
 
   allow_glob_domains = each.value["allow_glob_domains"]
-  allow_bare_domains = true
+  allow_bare_domains = each.value["allow_bare_domains"]
   allowed_domains = flatten([
     each.value["allowed_domains"],
     [for name in each.value["templated_common_name"] :

@@ -34,10 +34,9 @@ locals {
         # Optional "::key=value,key2=value2" parsing
         length(split("::", access)) > 1 ? {
           for pair in split(",", split("::", access)[1]) :
-          split("=", pair)[0] => (
-            split("=", pair)[1] == "true" ? true :
-            split("=", pair)[1] == "false" ? false :
-            try(tonumber(split("=", pair)[1]), split("=", pair)[1])
+          split("=", pair)[0] => try(
+            jsondecode(split("=", pair)[1]),
+            split("=", pair)[1]
           )
         } : {}
       )
