@@ -23,24 +23,24 @@ _vaultYaml:
           templatedCommonNames:
             email: '{{identity.entity.name}}@example.test'
     kubernetes:
+      roleDefinitions:
+        admin: |
+          rules:
+            - apiGroups: ["*"]
+              resources: ["*"]
+              verbs: ["*"]
+        deployer: |
+          rules:
+            - apiGroups: ["", "apps"]
+              resources: ["configmaps", "deployments", "pods"]
+              verbs: ["get", "list", "watch", "create", "update", "patch"]
+        bot-deploy: |
+          rules:
+            - apiGroups: ["apps"]
+              resources: ["deployments"]
+              verbs: ["get", "list", "update", "patch"]
       mounts:
         staging/cluster01:
-          roleDefinitions:
-            admin: |
-              rules:
-                - apiGroups: ["*"]
-                  resources: ["*"]
-                  verbs: ["*"]
-            deployer: |
-              rules:
-                - apiGroups: ["", "apps"]
-                  resources: ["configmaps", "deployments", "pods"]
-                  verbs: ["get", "list", "watch", "create", "update", "patch"]
-            bot-deploy: |
-              rules:
-                - apiGroups: ["apps"]
-                  resources: ["deployments"]
-                  verbs: ["get", "list", "update", "patch"]
           nameTemplate: '{{.DisplayName}}-{{.RoleName}}-{{unix_time}}s'
           labels:
             managed_by: vault

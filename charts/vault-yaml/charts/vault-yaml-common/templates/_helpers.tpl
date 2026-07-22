@@ -71,8 +71,8 @@ spec:
 {{- end -}}
 
 {{- define "vault-yaml.roleRules" -}}
-{{- $raw := index .mountSettings.roleDefinitions .role -}}
-{{- if not $raw }}{{ fail (printf "missing Kubernetes role definition %s for mount %s" .role .path) }}{{ end -}}
+{{- $raw := index .roleDefinitions .role -}}
+{{- if not $raw }}{{ fail (printf "missing _vaultYaml.secrets.kubernetes.roleDefinitions.%s" .role) }}{{ end -}}
 {{- $parsed := fromYaml $raw -}}
 {{- if $parsed.Error }}{{ fail (printf "invalid Kubernetes role definition %s: %s" .role $parsed.Error) }}{{ end -}}
 {{- $_ := required (printf "role definition %s must contain rules" .role) $parsed.rules -}}

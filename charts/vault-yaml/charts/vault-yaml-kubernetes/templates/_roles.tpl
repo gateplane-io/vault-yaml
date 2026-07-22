@@ -23,7 +23,7 @@ spec:
     tokenDefaultTtl: {{ default 600 $role.ttl }}
     tokenMaxTtl: {{ default 3600 $role.ttl_max }}
     kubernetesRoleType: {{ ternary "ClusterRole" "Role" (has "*" $namespaces) | quote }}
-    generatedRoleRules: {{ include "vault-yaml.roleRules" (dict "mountSettings" $mountSettings "path" $path "role" $roleName) | quote }}
+    generatedRoleRules: {{ include "vault-yaml.roleRules" (dict "roleDefinitions" .roleDefinitions "role" $roleName) | quote }}
     extraLabels:
 {{ toYaml (merge (dict "provisioned_for" "" "generated_from" (printf "%s/%s" $path $roleName)) (default dict $mountSettings.labels)) | indent 6 }}
     nameTemplate: {{ $mountSettings.nameTemplate | quote }}

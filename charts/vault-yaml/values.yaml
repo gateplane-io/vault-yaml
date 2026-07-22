@@ -39,32 +39,32 @@ _vaultYaml:
             email: '{{identity.entity.aliases.CONFIGURE_LDAP_ACCESSOR.name}}@my-org.example.com'
 
     kubernetes:
+      roleDefinitions:
+        admin: |
+          rules:
+            - apiGroups: ["*"]
+              resources: ["*"]
+              verbs: ["*"]
+        deployer: &deployerRules |
+          rules:
+            - apiGroups: ["apps", "extensions"]
+              resources: [deployments, statefulsets, daemonsets]
+              verbs: [get, list, create, update, patch, delete]
+            - apiGroups: [""]
+              resources: [pods, services, configmaps, persistentvolumeclaims]
+              verbs: [get, list, create, update, patch, delete]
+            - apiGroups: ["networking.k8s.io"]
+              resources: [ingresses]
+              verbs: [get, list, create, update, patch, delete]
+            - apiGroups: ["autoscaling"]
+              resources: [horizontalpodautoscalers]
+              verbs: [get, list, create, update, patch, delete]
+            - apiGroups: ["batch"]
+              resources: [jobs, cronjobs]
+              verbs: [get, list, create, update, patch, delete]
+        bot-deploy: *deployerRules
       mounts:
         staging/cluster01:
-          roleDefinitions:
-            admin: |
-              rules:
-                - apiGroups: ["*"]
-                  resources: ["*"]
-                  verbs: ["*"]
-            deployer: &deployerRules |
-              rules:
-                - apiGroups: ["apps", "extensions"]
-                  resources: [deployments, statefulsets, daemonsets]
-                  verbs: [get, list, create, update, patch, delete]
-                - apiGroups: [""]
-                  resources: [pods, services, configmaps, persistentvolumeclaims]
-                  verbs: [get, list, create, update, patch, delete]
-                - apiGroups: ["networking.k8s.io"]
-                  resources: [ingresses]
-                  verbs: [get, list, create, update, patch, delete]
-                - apiGroups: ["autoscaling"]
-                  resources: [horizontalpodautoscalers]
-                  verbs: [get, list, create, update, patch, delete]
-                - apiGroups: ["batch"]
-                  resources: [jobs, cronjobs]
-                  verbs: [get, list, create, update, patch, delete]
-            bot-deploy: *deployerRules
           nameTemplate: '{{.DisplayName | replace "_" "-" | replace " " ""}}-{{.RoleName | replace "_" "-"}}-{{unix_time}}s'
           labels:
             managed_by: vault

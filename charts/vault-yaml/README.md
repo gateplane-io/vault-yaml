@@ -332,26 +332,26 @@ Role fields and defaults:
 
 If `namespaces` contains `"*"`, the generated Kubernetes role type is `ClusterRole`; otherwise it is `Role`.
 
-Every access role requires a same-named operational role definition:
+Every access role requires a same-named global operational role definition. Definitions are siblings of `mounts` and can be reused by roles with the same name across every Kubernetes secrets-engine mount:
 
 ```yaml
 _vaultYaml:
   secrets:
     kubernetes:
+      roleDefinitions:
+        deployer: |
+          rules:
+            - apiGroups: ["apps"]
+              resources: [deployments]
+              verbs: [get, list, create, update, patch]
       mounts:
         staging/cluster01:
-          roleDefinitions:
-            deployer: |
-              rules:
-                - apiGroups: ["apps"]
-                  resources: [deployments]
-                  verbs: [get, list, create, update, patch]
           nameTemplate: '{{.DisplayName}}-{{.RoleName}}-{{unix_time}}s'
           labels:
             managed_by: vault
 ```
 
-The role-definition value must be valid YAML with a non-empty top-level `rules` field. A missing definition, invalid YAML, or absent `rules` fails rendering. It is encoded as JSON into the provider's `generatedRoleRules` field.
+The role-definition value must be valid YAML with a non-empty top-level `rules` field. A missing definition, invalid YAML, or absent `rules` fails rendering. It is encoded as JSON into the provider's `generatedRoleRules` field. Mount-specific `roleDefinitions` are not supported.
 
 Operational `labels` are merged with:
 
