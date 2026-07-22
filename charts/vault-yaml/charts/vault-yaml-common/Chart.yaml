@@ -2,4 +2,4 @@ apiVersion: v2
 name: vault-yaml-common
 description: Shared helpers for the vault-yaml chart.
 type: library
-version: 0.1.0
+version: 0.2.0

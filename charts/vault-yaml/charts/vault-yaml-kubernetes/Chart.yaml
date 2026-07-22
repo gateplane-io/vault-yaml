@@ -2,4 +2,4 @@ apiVersion: v2
 name: vault-yaml-kubernetes
 description: Kubernetes secrets-engine renderer library for vault-yaml.
 type: library
-version: 0.1.0
+version: 0.2.0
