@@ -30,7 +30,7 @@ The same access document can be reconciled through either:
 - **Terraform**, using the modules under [`terraform/modules`](terraform/modules) and the working configuration under [`terraform`](terraform).
 - **Crossplane**, using the Helm chart under [`charts/vault-yaml`](charts/vault-yaml), which renders Upbound `provider-vault` managed resources.
 
-Terraform and Crossplane are alternative owners of the same desired Vault configuration. Never run both reconcilers against the same Vault objects concurrently. Crossplane support currently has documented feature limitations; see the [chart README](charts/vault-yaml/README.md) for its exact support matrix, prerequisites, and operational values.
+Terraform and Crossplane are alternative owners of the same desired Vault configuration. Never run both reconcilers against the same Vault objects concurrently. Crossplane support currently has documented feature limitations; see the [chart README](charts/vault-yaml/README.md) for its exact support matrix, prerequisites, and operational values. Component version scopes, release tags, and current compatibility are documented in [`COMPATIBILITY.md`](COMPATIBILITY.md).
 
 ## 📑 Table of Contents
 
