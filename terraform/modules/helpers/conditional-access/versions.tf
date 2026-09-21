@@ -9,10 +9,5 @@
 # except for providing this software as a commercial service or product.
 
 terraform {
-  required_providers {
-    dns = {
-      source  = "hashicorp/dns"
-      version = "~>3.5.0"
-    }
-  }
+  required_version = ">= 1.11.0"
 }
