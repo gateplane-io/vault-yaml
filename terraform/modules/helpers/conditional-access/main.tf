@@ -13,7 +13,7 @@ module "policy_gate" {
 
   # source = "github.com/gateplane-io/terraform-gateplane-policy-gate?ref=main"
   source  = "gateplane-io/policy-gate/gateplane"
-  version = "1.2.0"
+  version = "1.3.0"
 
   endpoint_prefix = ""
 
