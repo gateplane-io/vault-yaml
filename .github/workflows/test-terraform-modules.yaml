@@ -1,0 +1,55 @@
+name: Test Terraform modules
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/test-terraform-modules.yaml"
+      - "scripts/test-terraform-modules.sh"
+      - "terraform/modules/**"
+  push:
+    branches:
+      - main
+      - dev
+    paths:
+      - ".github/workflows/test-terraform-modules.yaml"
+      - "scripts/test-terraform-modules.sh"
+      - "terraform/modules/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+  TF_PLUGIN_CACHE_DIR: /home/runner/.terraform.d/plugin-cache
+  TERRAFORM_VERSION: 1.11.4
+
+jobs:
+  test:
+    name: Test Terraform modules
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 #v7.0.1
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # 4.0.1
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+
+      - name: Create provider cache directory
+        run: mkdir -p "$TF_PLUGIN_CACHE_DIR"
+
+      - name: Restore provider cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # 6.1.0
+        with:
+          path: ${{ env.TF_PLUGIN_CACHE_DIR }}
+          key: terraform-providers-${{ runner.os }}-${{ runner.arch }}-${{ env.TERRAFORM_VERSION }}-${{ hashFiles('terraform/modules/**/*.tf', 'scripts/test-terraform-modules.sh') }}
+          restore-keys: |
+            terraform-providers-${{ runner.os }}-${{ runner.arch }}-${{ env.TERRAFORM_VERSION }}-
+
+      - name: Test modules
+        run: ./scripts/test-terraform-modules.sh
