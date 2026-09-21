@@ -2,6 +2,7 @@
 
 *Vault/OpenBao configuration for mere humans*
 
+[![TF modules tests](https://github.com/gateplane-io/vault-yaml/actions/workflows/test-terraform-modules.yaml/badge.svg)](https://github.com/gateplane-io/vault-yaml/actions/workflows/test-terraform-modules.yaml)
 
 ## 🚨 Problem statement
 
