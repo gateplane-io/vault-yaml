@@ -9,6 +9,21 @@
 # except for providing this software as a commercial service or product.
 
 output "authorizations" {
-  description = "The mapping of all authorizations from auth methods and secret engines, including policies assigned to entities, groups, and roles."
+  description = "Authorizations grouped by auth-method principal key."
   value       = local.authorizations
+}
+
+output "policies_list" {
+  description = "Flattened access-policy metadata produced by all configured secrets-engine modules."
+  value       = local.policies_list
+}
+
+output "secret_engines" {
+  description = "Secrets-engine path and accessor map available to ad-hoc policy templates."
+  value       = local.secret_engines
+}
+
+output "auth_methods" {
+  description = "Auth-method path and accessor map available to ad-hoc policy templates."
+  value       = local.auth_methods
 }

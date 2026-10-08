@@ -33,10 +33,10 @@ module "setup" {
 
   # https://github.com/gateplane-io/vault-plugins/releases
   policy_gate_plugin = {
-    filename       = "gateplane-policy-gate"
-    version        = "v1.1.0-base.0.4.2"
-    sha256         = "db37e99f33e21366d5c080236f5f10410e7cecdaa075019b322f37a80dc1a0cd"
-    approle_policy = "gateplane-policy-gate-policy"
+    filename    = "gateplane-policy-gate"
+    version     = "v1.1.0-base.0.4.2"
+    sha256      = "db37e99f33e21366d5c080236f5f10410e7cecdaa075019b322f37a80dc1a0cd"
+    policy_name = "gateplane-policy-gate-policy"
   }
 
   // Omit or explicitly add all origins to allow CORS from GatePlane WebUI

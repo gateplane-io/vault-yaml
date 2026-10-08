@@ -8,157 +8,174 @@
 # Use, modification, and redistribution permitted under the terms of the license,
 # except for providing this software as a commercial service or product.
 
-/*
-  ====================================================
-  This file IS PART OF the 'vault-yaml' installation
-
-  Tie all Secrets Engines and Auth Methods in the
-  'secrets-engines.tf' and 'auth-methods.tf' files
-  to their respective 'vault-yaml' modules (under ./modules)
-  ====================================================
-*/
-
 locals {
-  accesses = yamldecode(
-    # Change this filepath to the YAML file
-    # containing a 'vault-yaml' schema
-    file("${path.module}/../access.example.yaml")
+  # Normalize public arrays into stable maps before using for_each. Real Vault
+  # backends use their paths; mountless configurations use explicit aliases.
+  pki_mounts        = { for config in var.mounts.pki : config.mount.path => config }
+  kubernetes_mounts = { for config in var.mounts.kubernetes : config.mount.path => config }
+  ssh_mounts        = { for config in var.mounts.ssh : config.mount.path => config }
+  vault_mounts      = { for config in var.mounts.vault : config.alias => config }
+
+  ldap_auth_methods       = { for config in var.auth_methods.ldap : config.mount.path => config }
+  identity_auth_methods   = { for config in var.auth_methods.identity : config.alias => config }
+  cert_auth_methods       = { for config in var.auth_methods.cert : config.mount.path => config }
+  kubernetes_auth_methods = { for config in var.auth_methods.kubernetes : config.mount.path => config }
+  userpass_auth_methods   = { for config in var.auth_methods.userpass : config.mount.path => config }
+
+  secret_engines = merge(
+    { for path, config in local.pki_mounts : path => {
+      path     = config.mount.path
+      accessor = config.mount.accessor
+    } },
+    { for path, config in local.kubernetes_mounts : path => {
+      path     = config.mount.path
+      accessor = config.mount.accessor
+    } },
+    { for path, config in local.ssh_mounts : path => {
+      path     = config.mount.path
+      accessor = config.mount.accessor
+    } },
+    { for config in var.mounts.external : config.alias => {
+      path     = config.mount.path
+      accessor = config.mount.accessor
+    } },
+  )
+
+  auth_methods = merge(
+    { for config in var.auth_methods.ldap : config.alias => {
+      path     = config.mount.path
+      accessor = config.mount.accessor
+    } },
+    { for config in var.auth_methods.cert : config.alias => {
+      path     = config.mount.path
+      accessor = config.mount.accessor
+    } },
+    { for config in var.auth_methods.kubernetes : config.alias => {
+      path     = config.mount.path
+      accessor = config.mount.accessor
+    } },
+    { for config in var.auth_methods.userpass : config.alias => {
+      path     = config.mount.path
+      accessor = config.mount.accessor
+    } },
   )
 }
 
-/* === Secrets Engines ===  */
+module "pki" {
+  source   = "./modules/secrets-engines/pki"
+  for_each = local.pki_mounts
 
-module "ca" {
-  source = "./modules/secrets-engines/pki"
-
-  mount = vault_mount.pki
-
-  accesses  = local.accesses
-  issuer_id = vault_pki_secret_backend_root_cert.this.issuer_id
-
-  templated_common_names = {
-    email = "{{identity.entity.aliases.${local.auth_methods["ldap"]["accessor"]}.name}}@my-org.example.com"
-  }
+  mount                    = each.value.mount
+  accesses                 = var.accesses
+  issuer_id                = each.value.issuer_id
+  templated_common_names   = try(each.value.templated_common_names, {})
+  name_prefix              = try(each.value.name_prefix, "")
+  enable_conditional_roles = try(each.value.enable_conditional_roles, true)
 }
 
+module "kubernetes_secrets" {
+  source   = "./modules/secrets-engines/kubernetes"
+  for_each = local.kubernetes_mounts
 
-module "kubernetes" {
-  source = "./modules/secrets-engines/kubernetes"
-
-  mount = vault_kubernetes_secret_backend.kubernetes
-
-  role_directory = "../roles/kubernetes"
-  accesses       = local.accesses
+  mount                    = each.value.mount
+  accesses                 = var.accesses
+  role_directory           = each.value.role_directory
+  name_prefix              = try(each.value.name_prefix, "")
+  enable_conditional_roles = try(each.value.enable_conditional_roles, true)
+  name_template = try(
+    each.value.name_template,
+    "{{.DisplayName | replace \"_\" \"-\"  | replace \" \" \"\"}}-{{.RoleName | replace \"_\" \"-\"}}-{{unix_time}}s"
+  )
+  kubernetes_labels = try(each.value.kubernetes_labels, { managed_by = "vault" })
 }
-
 
 module "ssh" {
-  source = "./modules/secrets-engines/ssh"
+  source   = "./modules/secrets-engines/ssh"
+  for_each = local.ssh_mounts
 
-  accesses = local.accesses
-
-  mount = vault_mount.ssh
-
-  allowed_users = "{{identity.entity.aliases.${local.auth_methods["ldap"]["accessor"]}.name}}"
-  default_user  = "{{identity.entity.aliases.${local.auth_methods["ldap"]["accessor"]}.name}}"
-}
-
-locals {
-  # == Definitions to be used when templating Vault Policies ==
-  auth_methods = {
-    (module.ldap.principal_key) : module.ldap.entry,
-    # E.g: "ldap" : {accessor : "ldap_accessor_123", path: "ldap/old_infra"}
-
-    # The module.identity DOES NOT need to be added
-    # as Vault/OpenBao Templating can handle these entries internally:
-    # https://developer.hashicorp.com/vault/docs/concepts/policies#templated-policies
-
-    # ... <-- extend here for new Auth Method modules
-  }
-
-  secrets_engines = {
-    # Manually adding KV storage
-    "kv" = {
-      "accessor" : vault_mount.kvv2.accessor,
-      "path" : vault_mount.kvv2.path,
-    },
-    # Module outputs should be added:
-    (module.ca.entry["path"])         = module.ca.entry,
-    (module.kubernetes.entry["path"]) = module.kubernetes.entry,
-    (module.ssh.entry["path"])        = module.ssh.entry,
-    # ... <-- extend here for new Secrets Engine modules
-  }
+  mount                    = each.value.mount
+  accesses                 = var.accesses
+  allowed_users            = each.value.allowed_users
+  default_user             = each.value.default_user
+  name_prefix              = try(each.value.name_prefix, "")
+  enable_conditional_roles = try(each.value.enable_conditional_roles, true)
 }
 
 module "vault" {
-  source = "./modules/secrets-engines/vault"
+  source   = "./modules/secrets-engines/vault"
+  for_each = local.vault_mounts
 
-  role_directory = "../roles/vault"
-  accesses       = local.accesses
-
-  # Maps used for templating Vault Policy documents under roles/vault
-  auth_methods   = local.auth_methods
-  secret_engines = local.secrets_engines
+  accesses                 = var.accesses
+  role_directory           = each.value.role_directory
+  auth_methods             = local.auth_methods
+  secret_engines           = local.secret_engines
+  name_prefix              = try(each.value.name_prefix, "")
+  enable_conditional_roles = try(each.value.enable_conditional_roles, true)
 }
 
-# Structured output to by used by the Auth Method modules
 locals {
-  policies_list = flatten([
-    module.ca.access_list,
-    module.kubernetes.access_list,
-    module.ssh.access_list,
-    module.vault.access_list,
-    # ... <-- extend here for new Secrets Engine modules
-  ])
+  policies_list = flatten(concat(
+    [for instance in values(module.pki) : instance.access_list],
+    [for instance in values(module.kubernetes_secrets) : instance.access_list],
+    [for instance in values(module.ssh) : instance.access_list],
+    [for instance in values(module.vault) : instance.access_list],
+  ))
 }
 
-/* === Authentication Methods ===  */
-
-# Handle Principals authenticated through LDAP
 module "ldap" {
-  source = "./modules/auth-methods/ldap"
+  source   = "./modules/auth-methods/ldap"
+  for_each = local.ldap_auth_methods
 
-  mount = vault_ldap_auth_backend.this
-
+  mount         = each.value.mount
   policies_list = local.policies_list
-  # handles Principals starting with 'ldap'
-  # (e.g: ldap.users.jdoe)
-  principal_key = "ldap"
+  principal_key = each.value.alias
 }
 
-# Handle Principals directly existing in Vault/OpenBao (Entities/Groups)
 module "identity" {
-  source = "./modules/auth-methods/identity"
+  source   = "./modules/auth-methods/identity"
+  for_each = local.identity_auth_methods
 
   policies_list = local.policies_list
-  # handles Principals starting with 'identity'
-  # (e.g: identity.entity_id.de494a79-6ed1-4bd4-8a94-bb4f0e5bdec0)
-  principal_key = "identity"
+  principal_key = each.value.alias
+  exclusive     = try(each.value.exclusive, false)
 }
 
-# Handle Principals authenticated through mTLS
-# at POST /v1/auth/cert/login endpoint
 module "cert" {
-  source = "./modules/auth-methods/cert"
+  source   = "./modules/auth-methods/cert"
+  for_each = local.cert_auth_methods
 
+  mount               = each.value.mount
+  policies_list       = local.policies_list
+  principal_key       = each.value.alias
+  trusted_certificate = each.value.trusted_certificate
+  exclusive           = try(each.value.exclusive, false)
+}
+
+module "kubernetes_auth" {
+  source   = "./modules/auth-methods/kubernetes"
+  for_each = local.kubernetes_auth_methods
+
+  mount         = each.value.mount
   policies_list = local.policies_list
+  principal_key = each.value.alias
+}
 
-  # Explicitly trust the Certificate Authority
-  # set up in Vault under 'pki/org-ca'
-  trusted_certificate = vault_pki_secret_backend_root_cert.this.certificate
-  mount               = vault_auth_backend.cert
+module "userpass" {
+  source   = "./modules/auth-methods/userpass"
+  for_each = local.userpass_auth_methods
 
-  # handles Principals starting with 'cert'
-  # (e.g: cert.example.com)
-  principal_key = "cert"
+  mount         = each.value.mount
+  policies_list = local.policies_list
+  principal_key = each.value.alias
+  exclusive     = try(each.value.exclusive, false)
 }
 
 locals {
-  # Populates a mapping of principals
-  # to attached created Vault Policies
-  authorizations = [
-    module.identity.authorizations,
-    module.ldap.authorizations,
-    module.cert.authorizations,
-  ]
+  authorizations = merge(concat(
+    [for instance in values(module.ldap) : instance.authorizations],
+    [for instance in values(module.identity) : instance.authorizations],
+    [for instance in values(module.cert) : instance.authorizations],
+    [for instance in values(module.kubernetes_auth) : instance.authorizations],
+    [for instance in values(module.userpass) : instance.authorizations],
+  )...)
 }
