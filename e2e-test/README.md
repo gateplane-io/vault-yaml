@@ -61,7 +61,8 @@ templates live under `fixtures/`; Crossplane operational values live in
 `expectations.yaml` independently defines CLI commands and JSON field
 assertions. Keeping expectations separate prevents test-only data from entering
 the Vault-YAML module input. Each expectation may set `reconciler` to `both`,
-`terraform`, or `crossplane`; omission defaults to `both`:
+`terraform`, or `crossplane`; omission defaults to `both`. It may also set
+`target` to `vault` or `openbao`, likewise defaulting to `both`:
 
 ```yaml
 - name: Kubernetes auth role was generated
@@ -71,9 +72,12 @@ the Vault-YAML module input. Each expectation may set `reconciler` to `both`,
     data.bound_service_account_names: [e2e-serviceaccount]
 ```
 
-Use `both` only for behavior expected to be equivalent across reconcilers. The
-shared access fixture may include unsupported Crossplane principals as long as
-the corresponding assertions are marked `terraform`.
+Use `both` only for behavior expected to be equivalent across reconcilers and
+targets. The shared access fixture may include unsupported principals as long
+as the corresponding assertions select the appropriate reconciler or target.
+LDAP assertions run only against Vault: current OpenBao images distribute LDAP
+as an external plugin, which this compatibility suite intentionally does not
+install.
 
 ## Phases and ownership
 

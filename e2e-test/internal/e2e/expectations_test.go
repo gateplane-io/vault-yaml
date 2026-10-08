@@ -18,31 +18,37 @@ func TestParseE2EExpectations(t *testing.T) {
 		t.Fatal("expected at least one E2E expectation")
 	}
 	for _, reconciler := range []string{"terraform", "crossplane"} {
-		selected := ExpectationsForReconciler(expectations, reconciler)
-		if len(selected) == 0 {
-			t.Fatalf("expected at least one expectation for reconciler %s", reconciler)
-		}
-		for _, expectation := range selected {
-			if expectation.Reconciler != "both" && expectation.Reconciler != reconciler {
-				t.Fatalf("expectation %q selected for incompatible reconciler %s", expectation.Name, reconciler)
+		for _, target := range []string{"vault", "openbao"} {
+			selected := ExpectationsForRun(expectations, reconciler, target)
+			if len(selected) == 0 {
+				t.Fatalf("expected at least one expectation for %s/%s", target, reconciler)
+			}
+			for _, expectation := range selected {
+				if expectation.Reconciler != "both" && expectation.Reconciler != reconciler {
+					t.Fatalf("expectation %q selected for incompatible reconciler %s", expectation.Name, reconciler)
+				}
+				if expectation.Target != "both" && expectation.Target != target {
+					t.Fatalf("expectation %q selected for incompatible target %s", expectation.Name, target)
+				}
 			}
 		}
 	}
 }
 
-func TestExpectationReconcilerSelection(t *testing.T) {
+func TestExpectationRunSelection(t *testing.T) {
 	expectations := []Expectation{
-		{Name: "shared", Reconciler: "both"},
-		{Name: "terraform-only", Reconciler: "terraform"},
-		{Name: "crossplane-only", Reconciler: "crossplane"},
+		{Name: "shared", Reconciler: "both", Target: "both"},
+		{Name: "terraform-only", Reconciler: "terraform", Target: "both"},
+		{Name: "crossplane-only", Reconciler: "crossplane", Target: "both"},
+		{Name: "vault-only", Reconciler: "both", Target: "vault"},
 	}
-	terraformExpectations := ExpectationsForReconciler(expectations, "terraform")
-	if len(terraformExpectations) != 2 || terraformExpectations[0].Name != "shared" || terraformExpectations[1].Name != "terraform-only" {
-		t.Fatalf("unexpected Terraform expectations: %#v", terraformExpectations)
+	terraformVaultExpectations := ExpectationsForRun(expectations, "terraform", "vault")
+	if len(terraformVaultExpectations) != 3 || terraformVaultExpectations[0].Name != "shared" || terraformVaultExpectations[1].Name != "terraform-only" || terraformVaultExpectations[2].Name != "vault-only" {
+		t.Fatalf("unexpected Terraform/Vault expectations: %#v", terraformVaultExpectations)
 	}
-	crossplaneExpectations := ExpectationsForReconciler(expectations, "crossplane")
-	if len(crossplaneExpectations) != 2 || crossplaneExpectations[0].Name != "shared" || crossplaneExpectations[1].Name != "crossplane-only" {
-		t.Fatalf("unexpected Crossplane expectations: %#v", crossplaneExpectations)
+	crossplaneOpenBaoExpectations := ExpectationsForRun(expectations, "crossplane", "openbao")
+	if len(crossplaneOpenBaoExpectations) != 2 || crossplaneOpenBaoExpectations[0].Name != "shared" || crossplaneOpenBaoExpectations[1].Name != "crossplane-only" {
+		t.Fatalf("unexpected Crossplane/OpenBao expectations: %#v", crossplaneOpenBaoExpectations)
 	}
 }
 
@@ -58,6 +64,9 @@ func TestExpectationReconcilerDefaultsToBoth(t *testing.T) {
 	}
 	if expectations[0].Reconciler != "both" {
 		t.Fatalf("expected default reconciler both, got %q", expectations[0].Reconciler)
+	}
+	if expectations[0].Target != "both" {
+		t.Fatalf("expected default target both, got %q", expectations[0].Target)
 	}
 }
 
@@ -80,6 +89,17 @@ func TestExpectationRejectsInvalidReconciler(t *testing.T) {
 	}
 	if _, err := ParseExpectations(path); err == nil {
 		t.Fatal("expected invalid reconciler to fail parsing")
+	}
+}
+
+func TestExpectationRejectsInvalidTarget(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "expectations.yaml")
+	contents := "expectations:\n  - name: invalid\n    target: other\n    command: [read, -format=json, path]\n    assertions:\n      data.value: true\n"
+	if err := os.WriteFile(path, []byte(contents), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ParseExpectations(path); err == nil {
+		t.Fatal("expected invalid target to fail parsing")
 	}
 }
 

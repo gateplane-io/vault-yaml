@@ -11,12 +11,12 @@
 terraform {
   backend "local" {}
 
-  required_version = ">= 1.5.0"
+  required_version = ">= 1.11.0"
 
   required_providers {
     vault = {
       source  = "hashicorp/vault"
-      version = ">= 4.0, < 6.0"
+      version = ">= 5.0.0, < 6.0.0"
     }
     dns = {
       source  = "hashicorp/dns"

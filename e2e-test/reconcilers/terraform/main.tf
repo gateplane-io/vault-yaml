@@ -12,6 +12,12 @@ variable "prerequisite_state_path" {
   type = string
 }
 
+variable "enable_ldap" {
+  description = "Whether the target supports the LDAP auth method."
+  type        = bool
+  default     = true
+}
+
 data "terraform_remote_state" "prerequisites" {
   backend = "local"
   config = {
@@ -25,92 +31,72 @@ locals {
   auth_methods = data.terraform_remote_state.prerequisites.outputs.auth_methods
   pki_root     = data.terraform_remote_state.prerequisites.outputs.pki_root
 
-  secret_engines = {
-    kv         = local.mounts.kv
-    pki        = module.pki.entry
-    kubernetes = module.kubernetes_secrets.entry
-    ssh        = module.ssh.entry
+  identity_name_template = "{{identity.entity.name}}"
+  ldap_name_template     = var.enable_ldap ? "{{identity.entity.aliases.${local.auth_methods.ldap.accessor}.name}}" : local.identity_name_template
+}
+
+module "vault_yaml" {
+  source = "../../../terraform"
+
+  accesses = local.accesses
+
+  mounts = {
+    pki = [{
+      mount                    = local.mounts.pki
+      issuer_id                = local.pki_root.issuer_id
+      enable_conditional_roles = false
+      templated_common_names = {
+        email = "${local.ldap_name_template}@example.test"
+      }
+    }]
+
+    kubernetes = [{
+      mount                    = local.mounts.kubernetes
+      role_directory           = "${path.module}/../../fixtures/roles/kubernetes"
+      enable_conditional_roles = false
+    }]
+
+    ssh = [{
+      mount                    = local.mounts.ssh
+      allowed_users            = local.ldap_name_template
+      default_user             = local.ldap_name_template
+      enable_conditional_roles = false
+    }]
+
+    vault = [{
+      alias                    = "adhoc"
+      role_directory           = "${path.module}/../../fixtures/roles/vault"
+      enable_conditional_roles = false
+    }]
+
+    external = [{
+      alias = "kv"
+      mount = local.mounts.kv
+    }]
   }
-}
 
-module "pki" {
-  source = "../../../terraform/modules/secrets-engines/pki"
+  auth_methods = merge(
+    {
+      identity = [{
+        alias = "identity"
+      }]
 
-  mount                    = local.mounts.pki
-  issuer_id                = local.pki_root.issuer_id
-  accesses                 = local.accesses
-  enable_conditional_roles = false
-  templated_common_names = {
-    email = "{{identity.entity.aliases.${local.auth_methods.ldap.accessor}.name}}@example.test"
-  }
-}
+      cert = [{
+        alias               = "cert"
+        mount               = local.auth_methods.cert
+        trusted_certificate = local.pki_root.certificate
+      }]
 
-module "kubernetes_secrets" {
-  source = "../../../terraform/modules/secrets-engines/kubernetes"
-
-  mount                    = local.mounts.kubernetes
-  role_directory           = "${path.module}/../../fixtures/roles/kubernetes"
-  accesses                 = local.accesses
-  enable_conditional_roles = false
-}
-
-module "ssh" {
-  source = "../../../terraform/modules/secrets-engines/ssh"
-
-  mount                    = local.mounts.ssh
-  accesses                 = local.accesses
-  allowed_users            = "{{identity.entity.aliases.${local.auth_methods.ldap.accessor}.name}}"
-  default_user             = "{{identity.entity.aliases.${local.auth_methods.ldap.accessor}.name}}"
-  enable_conditional_roles = false
-}
-
-module "vault_policies" {
-  source = "../../../terraform/modules/secrets-engines/vault"
-
-  role_directory           = "${path.module}/../../fixtures/roles/vault"
-  accesses                 = local.accesses
-  secret_engines           = local.secret_engines
-  auth_methods             = local.auth_methods
-  enable_conditional_roles = false
-}
-
-locals {
-  policies_list = flatten([
-    module.pki.access_list,
-    module.kubernetes_secrets.access_list,
-    module.ssh.access_list,
-    module.vault_policies.access_list,
-  ])
-}
-
-module "ldap" {
-  source = "../../../terraform/modules/auth-methods/ldap"
-
-  mount         = local.auth_methods.ldap
-  policies_list = local.policies_list
-  principal_key = "ldap"
-}
-
-module "identity" {
-  source = "../../../terraform/modules/auth-methods/identity"
-
-  policies_list = local.policies_list
-  principal_key = "identity"
-}
-
-module "cert" {
-  source = "../../../terraform/modules/auth-methods/cert"
-
-  mount               = local.auth_methods.cert
-  trusted_certificate = local.pki_root.certificate
-  policies_list       = local.policies_list
-  principal_key       = "cert"
-}
-
-module "kubernetes_auth" {
-  source = "../../../terraform/modules/auth-methods/kubernetes"
-
-  mount         = local.auth_methods.kubernetes
-  policies_list = local.policies_list
-  principal_key = "kubernetes"
+      kubernetes = [{
+        alias = "kubernetes"
+        mount = local.auth_methods.kubernetes
+      }]
+    },
+    var.enable_ldap ? {
+      ldap = [{
+        alias = "ldap"
+        mount = local.auth_methods.ldap
+      }]
+    } : {},
+  )
 }

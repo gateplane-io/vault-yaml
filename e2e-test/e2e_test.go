@@ -40,7 +40,10 @@ func runTarget(t *testing.T, config e2e.Config, target e2e.Target, expectations 
 
 	prerequisiteState := filepath.Join(harness.TempDir(), "prerequisites.tfstate")
 	prerequisites := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
-		TerraformDir:  "terraform-prerequisites",
+		TerraformDir: "terraform-prerequisites",
+		Vars: map[string]interface{}{
+			"enable_ldap": target.SupportsLDAP,
+		},
 		BackendConfig: map[string]interface{}{"path": prerequisiteState},
 		EnvVars:       terraformEnvironment(harness, config, filepath.Join(harness.TempDir(), "prerequisites-data")),
 		NoColor:       true,
@@ -69,8 +72,8 @@ func runTarget(t *testing.T, config e2e.Config, target e2e.Target, expectations 
 		defer harness.CleanupCrossplane()
 	}
 
-	selectedExpectations := e2e.ExpectationsForReconciler(expectations, config.Reconciler)
-	t.Logf("running %d of %d expectations for reconciler %s", len(selectedExpectations), len(expectations), config.Reconciler)
+	selectedExpectations := e2e.ExpectationsForRun(expectations, config.Reconciler, target.Name)
+	t.Logf("running %d of %d expectations for %s/%s", len(selectedExpectations), len(expectations), target.Name, config.Reconciler)
 	mismatches := harness.AssertAll(selectedExpectations)
 	for _, mismatch := range mismatches {
 		t.Logf("ASSERTION MISMATCH: %s", mismatch)
@@ -83,8 +86,11 @@ func runTarget(t *testing.T, config e2e.Config, target e2e.Target, expectations 
 func runTerraformReconciler(t *testing.T, harness *e2e.Harness, config e2e.Config, prerequisiteState string) func() {
 	t.Helper()
 	options := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
-		TerraformDir:  filepath.Join("reconcilers", "terraform"),
-		Vars:          map[string]interface{}{"prerequisite_state_path": prerequisiteState},
+		TerraformDir: filepath.Join("reconcilers", "terraform"),
+		Vars: map[string]interface{}{
+			"prerequisite_state_path": prerequisiteState,
+			"enable_ldap":             harness.Target().SupportsLDAP,
+		},
 		BackendConfig: map[string]interface{}{"path": filepath.Join(harness.TempDir(), "vault-yaml.tfstate")},
 		EnvVars:       terraformEnvironment(harness, config, filepath.Join(harness.TempDir(), "vault-yaml-data")),
 		NoColor:       true,

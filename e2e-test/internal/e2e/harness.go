@@ -41,6 +41,8 @@ func (h *Harness) TempDir() string { return h.tempDir }
 
 func (h *Harness) Context() string { return "kind-" + h.cluster }
 
+func (h *Harness) Target() Target { return h.target }
+
 func (h *Harness) InClusterAddress() string {
 	return fmt.Sprintf("http://%s.default.svc:8200", h.target.PodName)
 }
@@ -199,7 +201,11 @@ func (h *Harness) InstallCrossplane(accessFile, valuesFile, chartDir string) err
 	if output, err := h.run("kubectl", "wait", "--context", contextName, "--for=condition=Healthy", "provider.pkg.crossplane.io/upbound-provider-vault", "--timeout="+h.config.CrossplaneTimeout.String()); err != nil {
 		return fmt.Errorf("provider-vault did not become healthy: %w: %s\n%s", err, output, h.crossplaneDiagnostics())
 	}
-	if output, err := h.run("helm", "upgrade", "--install", "vault-yaml", chartDir, "--kube-context", contextName, "--namespace", "vault-system", "--create-namespace", "--values", valuesFile, "--set-file", "accessFile="+accessFile, "--set-string", "_vaultYaml.provider.config.address="+h.InClusterAddress()); err != nil {
+	helmArgs := []string{"upgrade", "--install", "vault-yaml", chartDir, "--kube-context", contextName, "--namespace", "vault-system", "--create-namespace", "--values", valuesFile, "--set-file", "accessFile=" + accessFile, "--set-string", "_vaultYaml.provider.config.address=" + h.InClusterAddress()}
+	if !h.target.SupportsLDAP {
+		helmArgs = append(helmArgs, "--set", "_vaultYaml.auth.ldap.enabled=false")
+	}
+	if output, err := h.run("helm", helmArgs...); err != nil {
 		return fmt.Errorf("install Vault-YAML chart: %w: %s", err, output)
 	}
 	return h.waitForManagedResources(h.config.CrossplaneTimeout)

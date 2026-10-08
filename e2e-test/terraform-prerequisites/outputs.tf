@@ -18,11 +18,18 @@ output "mounts" {
 }
 
 output "auth_methods" {
-  value = {
-    ldap       = { path = vault_ldap_auth_backend.ldap.path, accessor = vault_ldap_auth_backend.ldap.accessor }
-    cert       = { path = vault_auth_backend.cert.path, accessor = vault_auth_backend.cert.accessor }
-    kubernetes = { path = vault_auth_backend.kubernetes.path, accessor = vault_auth_backend.kubernetes.accessor }
-  }
+  value = merge(
+    {
+      cert       = { path = vault_auth_backend.cert.path, accessor = vault_auth_backend.cert.accessor }
+      kubernetes = { path = vault_auth_backend.kubernetes.path, accessor = vault_auth_backend.kubernetes.accessor }
+    },
+    var.enable_ldap ? {
+      ldap = {
+        path     = vault_ldap_auth_backend.ldap[0].path
+        accessor = vault_ldap_auth_backend.ldap[0].accessor
+      }
+    } : {},
+  )
 }
 
 output "pki_root" {

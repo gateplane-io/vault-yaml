@@ -12,10 +12,11 @@ import (
 
 // Target describes one Vault-compatible server under test.
 type Target struct {
-	Name    string
-	Image   string
-	CLI     string
-	PodName string
+	Name         string
+	Image        string
+	CLI          string
+	PodName      string
+	SupportsLDAP bool
 }
 
 // Config contains settings shared by all matrix entries.
@@ -37,8 +38,8 @@ func LoadConfig() (Config, error) {
 	vaultTag := envOr("E2E_VAULT_VERSION", "latest")
 	openBaoTag := envOr("E2E_OPENBAO_VERSION", "latest")
 	matrix := map[string]Target{
-		"vault":   {Name: "vault", Image: "hashicorp/vault:" + vaultTag, CLI: "vault", PodName: "vault"},
-		"openbao": {Name: "openbao", Image: "openbao/openbao:" + openBaoTag, CLI: "bao", PodName: "openbao"},
+		"vault":   {Name: "vault", Image: "hashicorp/vault:" + vaultTag, CLI: "vault", PodName: "vault", SupportsLDAP: true},
+		"openbao": {Name: "openbao", Image: "openbao/openbao:" + openBaoTag, CLI: "bao", PodName: "openbao", SupportsLDAP: false},
 	}
 
 	selection := strings.ToLower(envOr("E2E_TARGET", "both"))

@@ -57,7 +57,15 @@ resource "vault_ssh_secret_backend_ca" "ssh" {
   generate_signing_key = true
 }
 
+variable "enable_ldap" {
+  description = "Whether to create the LDAP auth prerequisite. OpenBao latest requires an external LDAP plugin, so its E2E target disables this."
+  type        = bool
+  default     = true
+}
+
 resource "vault_ldap_auth_backend" "ldap" {
+  count = var.enable_ldap ? 1 : 0
+
   path         = "ldap"
   description  = "E2E LDAP prerequisite"
   url          = "ldap://127.0.0.1:389"

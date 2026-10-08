@@ -3,7 +3,7 @@
 #
 # Commands run through the Vault/OpenBao CLI inside the server pod.
 # Assertions use dot-separated paths into each command's JSON output.
-# `reconciler` defaults to `both`; use it only for implementation-specific behavior.
+# `reconciler` and `target` default to `both`; use them only for implementation-specific behavior.
 
 expectations:
   # Shared prerequisite health
@@ -32,6 +32,7 @@ expectations:
       data.description: E2E SSH CA prerequisite
 
   - name: LDAP prerequisite auth method exists
+    target: vault
     command: [read, -format=json, sys/auth/ldap]
     assertions:
       data.type: ldap
@@ -184,31 +185,37 @@ expectations:
 
   # Static LDAP attachment and policy aggregation
   - name: LDAP common user receives policies from every shared role
+    target: vault
     command: [read, -format=json, auth/ldap/users/e2e-user]
     assertions:
       data.policies: [kubernetes-admin-cluster01, pki-web-org-ca, ssh-developer-vms, vault-secrets-personal-adhoc]
 
   - name: LDAP common group receives shared and per-principal policies
+    target: vault
     command: [read, -format=json, auth/ldap/groups/e2e-group]
     assertions:
       data.policies: [kubernetes-admin-cluster01, pki-web-org-ca, ssh-developer-vms, vault-secrets-group-adhoc-e2e-group, vault-secrets-personal-adhoc]
 
   - name: LDAP PKI client group receives only the client policy
+    target: vault
     command: [read, -format=json, auth/ldap/groups/e2e-pki-clients]
     assertions:
       data.policies: [pki-client-generate-org-ca]
 
   - name: LDAP developer group receives only the deployer policy
+    target: vault
     command: [read, -format=json, auth/ldap/groups/e2e-developers]
     assertions:
       data.policies: [kubernetes-deployer-cluster01]
 
   - name: LDAP CI user receives only the bot policy
+    target: vault
     command: [read, -format=json, auth/ldap/users/e2e-cicd]
     assertions:
       data.policies: [kubernetes-bot-deploy-cluster01]
 
   - name: LDAP administrator group aggregates SSH and per-principal policies
+    target: vault
     command: [read, -format=json, auth/ldap/groups/e2e-admins]
     assertions:
       data.policies: [ssh-admin-vms, vault-secrets-group-adhoc-e2e-admins]

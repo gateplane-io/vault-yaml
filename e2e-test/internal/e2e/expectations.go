@@ -19,6 +19,7 @@ import (
 type Expectation struct {
 	Name       string         `yaml:"name"`
 	Reconciler string         `yaml:"reconciler,omitempty"`
+	Target     string         `yaml:"target,omitempty"`
 	Command    []string       `yaml:"command"`
 	Assertions map[string]any `yaml:"assertions"`
 }
@@ -56,6 +57,12 @@ func ParseExpectations(path string) ([]Expectation, error) {
 		if expectation.Reconciler != "both" && expectation.Reconciler != "terraform" && expectation.Reconciler != "crossplane" {
 			return nil, fmt.Errorf("expectation %q reconciler must be both, terraform, or crossplane; got %q", expectation.Name, expectation.Reconciler)
 		}
+		if expectation.Target == "" {
+			expectation.Target = "both"
+		}
+		if expectation.Target != "both" && expectation.Target != "vault" && expectation.Target != "openbao" {
+			return nil, fmt.Errorf("expectation %q target must be both, vault, or openbao; got %q", expectation.Name, expectation.Target)
+		}
 	}
 	sort.Slice(document.Expectations, func(i, j int) bool {
 		return document.Expectations[i].Name < document.Expectations[j].Name
@@ -63,12 +70,14 @@ func ParseExpectations(path string) ([]Expectation, error) {
 	return document.Expectations, nil
 }
 
-// ExpectationsForReconciler returns expectations shared by both reconcilers or
-// explicitly assigned to the selected reconciler.
-func ExpectationsForReconciler(expectations []Expectation, reconciler string) []Expectation {
+// ExpectationsForRun returns expectations shared by or explicitly assigned to
+// the selected reconciler and target.
+func ExpectationsForRun(expectations []Expectation, reconciler, target string) []Expectation {
 	selected := make([]Expectation, 0, len(expectations))
 	for _, expectation := range expectations {
-		if expectation.Reconciler == "both" || expectation.Reconciler == reconciler {
+		reconcilerMatches := expectation.Reconciler == "both" || expectation.Reconciler == reconciler
+		targetMatches := expectation.Target == "both" || expectation.Target == target
+		if reconcilerMatches && targetMatches {
 			selected = append(selected, expectation)
 		}
 	}
