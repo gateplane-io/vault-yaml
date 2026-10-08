@@ -1,0 +1,169 @@
+formatter: markdown table
+
+version: ""
+
+
+recursive:
+  enabled: false
+  path: modules
+  include-main: true
+
+sections:
+  show:
+    - inputs
+    - outputs
+
+content: |-
+  # `vault-yaml` Terraform module
+
+  This directory is the public Terraform module. It accepts one decoded `vault-yaml` access document plus existing secrets-engine mounts and authentication methods. Top-level keys select internal submodule types, and each key contains an array so multiple mounts or auth methods of the same type are supported.
+
+  The module does not create mounts or configure the Vault provider. Callers retain ownership of those resources and pass their resource or data-source objects through `mount`.
+
+  ## Usage
+
+  ```hcl
+  module "vault_yaml" {
+    source = "github.com/gateplane-io/vault-yaml.git//terraform"
+
+    accesses = yamldecode(file("${path.module}/access.yaml"))
+
+    mounts = {
+      pki = [{
+        mount                    = vault_mount.primary_pki
+        issuer_id                = vault_pki_secret_backend_root_cert.primary.issuer_id
+        templated_common_names   = { email = "{{ "{{identity.entity.name}}" }}@example.com" }
+        enable_conditional_roles = true
+      }, {
+        mount                  = vault_mount.partner_pki
+        issuer_id              = vault_pki_secret_backend_issuer.partner.issuer_id
+        templated_common_names = {}
+      }]
+
+      kubernetes = [{
+        mount          = vault_kubernetes_secret_backend.production
+        role_directory = "${path.module}/roles/kubernetes"
+      }]
+
+      ssh = [{
+        mount         = vault_mount.ssh
+        allowed_users = "{{ "{{identity.entity.name}}" }}"
+        default_user  = "{{ "{{identity.entity.name}}" }}"
+      }]
+
+      vault = [{
+        alias          = "adhoc"
+        role_directory = "${path.module}/roles/vault"
+      }]
+
+      # Template-only engines that do not dispatch a role submodule.
+      external = [{
+        alias = "kv"
+        mount = vault_mount.kvv2
+      }]
+    }
+
+    auth_methods = {
+      ldap = [{
+        alias = "ldap"
+        mount = vault_ldap_auth_backend.primary
+      }, {
+        alias = "partner_ldap"
+        mount = vault_ldap_auth_backend.partner
+      }]
+
+      identity = [{
+        alias = "identity"
+      }]
+
+      cert = [{
+        alias               = "cert"
+        mount               = vault_auth_backend.cert
+        trusted_certificate = vault_pki_secret_backend_root_cert.primary.certificate
+      }]
+    }
+  }
+  ```
+
+  See [`examples/complete`](examples/complete) for a complete Bring-Your-Own-Vault (BYOV) configuration.
+
+  ## Mounts
+
+  `mounts` is an object keyed by supported secrets-engine type. Every key contains an array; each element is passed to one instance of that type's internal module.
+
+  | Key | Required fields per element | Optional fields per element |
+  | --- | --- | --- |
+  | `pki` | `mount`, `issuer_id` | `templated_common_names`, `name_prefix`, `enable_conditional_roles` |
+  | `kubernetes` | `mount`, `role_directory` | `name_prefix`, `enable_conditional_roles`, `name_template`, `kubernetes_labels` |
+  | `ssh` | `mount`, `allowed_users`, `default_user` | `name_prefix`, `enable_conditional_roles` |
+  | `vault` | `alias`, `role_directory` | `name_prefix`, `enable_conditional_roles` |
+  | `external` | `alias`, `mount` | none |
+
+  Public arrays are normalized into internal maps before dispatch. PKI, Kubernetes, and SSH instances are keyed by `mount.path`; mountless Vault/ad-hoc instances are keyed by `alias`. Managed engines are exposed to policy templates under their Vault mount paths. `external` entries are exposed under their explicit `alias`, allowing names such as `kv` without dispatching an internal role module.
+
+  Reordering an input array does not change Terraform module addresses.
+
+  ## Authentication methods
+
+  `auth_methods` is an object keyed by supported authentication type. Every key contains an array, and every element requires an explicit `alias`. The alias is the first component of matching principals; for example, `alias = "partner_ldap"` handles principals beginning with `partner_ldap.`.
+
+  Aliases must be non-empty and unique across all auth types.
+
+  | Key | Required fields per element | Optional fields per element |
+  | --- | --- | --- |
+  | `ldap` | `alias`, `mount` | none |
+  | `identity` | `alias` | `exclusive` |
+  | `cert` | `alias`, `mount`, `trusted_certificate` | `exclusive` |
+  | `kubernetes` | `alias`, `mount` | none |
+  | `userpass` | `alias`, `mount` | `exclusive` |
+
+  Mounted auth instances are internally keyed by `mount.path`. Identity instances have no mount and are keyed by `alias`. Reordering an input array does not change Terraform module addresses.
+
+  {{ .Inputs }}
+
+  {{ .Outputs }}
+
+  ----
+
+  ## ⚖️ License
+
+  This project is licensed under the [Elastic License v2](https://www.elastic.co/licensing/elastic-license).
+
+  This means:
+
+  - ✅ You can use, fork, and modify it for **yourself** or **within your company**.
+  - ✅ You can submit pull requests and redistribute modified versions (with the license attached).
+  - ❌ You may **not** sell it, offer it as a paid product, or use it in a hosted service (e.g., SaaS).
+  - ❌ You may **not** re-license it under a different license.
+
+  In short: You can use and extend the code freely, privately or inside your business - just don’t build a business around it without our permission.
+  [This FAQ by Elastic](https://www.elastic.co/licensing/elastic-license/faq) greatly summarizes things.
+
+  See the [`./LICENSES/Elastic-2.0.txt`](./LICENSES/Elastic-2.0.txt) file for full details.
+
+output:
+  file: README.md
+  mode: replace
+  template: |
+    <!-- BEGIN_TF_DOCS -->
+    {{ .Content }}
+    <!-- END_TF_DOCS -->
+
+sort:
+  enabled: true
+  by: name
+
+settings:
+  anchor: true
+  color: true
+  default: true
+  description: true
+  escape: true
+  hide-empty: false
+  html: true
+  indent: 2
+  lockfile: true
+  read-comments: true
+  required: true
+  sensitive: true
+  type: true
