@@ -10,6 +10,10 @@
 
 variable "mount" {
   description = "The mount configuration object for the SSH secrets engine [`vault_mount`](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/mount)."
+  type = object({
+    path     = string
+    accessor = string
+  })
 }
 
 # ===
@@ -17,23 +21,28 @@ variable "mount" {
 
 
 variable "accesses" {
-  description = "Map of access configurations for SSH secrets engine, defining roles and their properties."
+  description = "Map of access configurations for SSH secrets engine, defining heterogeneous role bodies and their properties."
+  type        = any
 }
 
 variable "name_prefix" {
   description = "Prefix to prepend to resource names created by this module."
+  type        = string
   default     = ""
 }
 
 variable "allowed_users" {
   description = "Template or pattern for allowed users in SSH certificates (e.g., '{{identity.entity.name}}')."
+  type        = string
 }
 
 variable "default_user" {
   description = "The default user for SSH certificates when not specified."
+  type        = string
 }
 
 variable "enable_conditional_roles" {
   description = "Enable or disable conditional access roles that require approval workflows."
+  type        = bool
   default     = true
 }

@@ -36,9 +36,7 @@ resource "vault_kubernetes_secret_backend" "kubernetes" {
   default_lease_ttl_seconds = 43200
   max_lease_ttl_seconds     = 86400
 
-  kubernetes_host     = "https://127.0.0.1:6443"
-  service_account_jwt = var.kubernetes_token
-  kubernetes_ca_cert  = var.kubernetes_ca
+  kubernetes_host = "https://127.0.0.1:6443"
 }
 
 resource "vault_mount" "ssh" {

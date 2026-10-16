@@ -9,12 +9,13 @@
 # except for providing this software as a commercial service or product.
 
 variable "accesses" {
-  description = "Decoded YAML structure containing paths with `roles` and `roles_conditional`"
+  description = "Decoded YAML structure containing engine paths and heterogeneous engine-specific role bodies."
   type        = any
 }
 
 variable "field_defaults" {
-  description = "Map of field keys to their default values for roles"
+  description = "Engine-specific field defaults. This remains dynamic because values can mix strings, numbers, booleans, and collections."
+  type        = any
   default     = {}
 }
 

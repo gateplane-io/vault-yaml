@@ -1,0 +1,14 @@
+# Copyright (C) 2026 Ioannis Torakis <john.torakis@gmail.com>
+# SPDX-License-Identifier: Elastic-2.0
+
+staging/cluster01:
+  type: kubernetes
+  roles:
+    viewer:
+      namespaces: [application]
+      ttl: 600
+      ttl_max: 3600
+      access:
+        static:
+          - userpass.alice
+          - cert.developer.example.com

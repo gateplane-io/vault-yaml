@@ -9,8 +9,6 @@
 # except for providing this software as a commercial service or product.
 
 variable "vault_token" {}
-variable "kubernetes_ca" {}
-variable "kubernetes_token" {}
 
 provider "vault" {
   address         = "https://127.0.0.1:8200"

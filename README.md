@@ -28,7 +28,7 @@ By defining secret engines, roles, policies, and access control in a single, hum
 
 The same access document can be reconciled through either:
 
-- **Terraform**, using the modules under [`terraform/modules`](terraform/modules) and the working configuration under [`terraform`](terraform).
+- **Terraform**, using the reusable root module under [`terraform`](terraform), its internal submodules under [`terraform/modules`](terraform/modules), and the complete configuration under [`terraform/examples/complete`](terraform/examples/complete).
 - **Crossplane**, using the Helm chart under [`charts/vault-yaml`](charts/vault-yaml), which renders Upbound `provider-vault` managed resources.
 
 Terraform and Crossplane are alternative owners of the same desired Vault configuration. Never run both reconcilers against the same Vault objects concurrently. Crossplane support currently has documented feature limitations; see the [chart README](charts/vault-yaml/README.md) for its exact support matrix, prerequisites, and operational values. Component version scopes, release tags, and current compatibility are documented in [`COMPATIBILITY.md`](COMPATIBILITY.md).
@@ -342,7 +342,7 @@ Your policy templates can access these pre-defined variables:
 - **`access`** - For `for_each: true`, the original complete principal string
 - **`access_name`** - For `for_each: true`, the principal's path-friendly semantic name
 
-`access_name` removes any `::` options, removes principal grammar prefixes, joins semantic components with `-`, replaces non-alphanumeric runs with `-`, trims edge hyphens, and preserves case. For example, `kubernetes.default.serviceaccount` becomes `default-serviceaccount`, `ldap.groups.Platform.Administrators` becomes `Platform-Administrators`, and `cert.test@example.com` becomes `test-example-com`. Templates must use `access_name` instead of splitting `access` themselves.
+`access_name` removes any `::` options, removes principal grammar prefixes, joins semantic components with `-`, replaces non-alphanumeric runs with `-`, trims edge hyphens, and preserves case. For example, `kubernetes.default.serviceaccount` becomes `default-serviceaccount`, `ldap.groups.Platform-Administrators` becomes `Platform-Administrators`, and `cert.test@example.com` becomes `test-example-com`. Templates must use `access_name` instead of splitting *principals* stored in the `access` variable themselves.
 
 For identity name principals, this readable template value does not change authorization behavior: Terraform still resolves the referenced entity or group name to its Vault ID before attaching policies.
 
@@ -357,7 +357,7 @@ path "${secrets_engines["kv"]["path"]}/data/users/{{ identity.entity.name }}" {
 }
 ```
 
-See [`terraform/main.tf#L66`](https://github.com/gateplane-io/vault-yaml/blob/main/terraform/main.tf#L66) for how these maps are constructed.
+See the root module's [`terraform/main.tf`](terraform/main.tf) and [`terraform/README.md`](terraform/README.md) for how these maps are constructed from `mounts` and `auth_methods`.
 
 ## 🚀 Getting Started
 
@@ -367,7 +367,7 @@ Use exactly one reconciler for each external Vault object.
 
 #### Terraform
 
-Terraform consumes the access document with `yamldecode` and uses the modules under [`terraform/modules`](terraform/modules). This remains the path with the broadest feature support, including GatePlane conditional access and identity lookup by name.
+Terraform consumes the access document with `yamldecode` and passes it, existing mounts, and auth methods to the reusable root module under [`terraform`](terraform). A complete single-call configuration is available under [`terraform/examples/complete`](terraform/examples/complete). This remains the path with the broadest feature support, including GatePlane conditional access and identity lookup by name.
 
 #### Crossplane
 
@@ -409,51 +409,30 @@ If you're setting up a new Vault/OpenBao instance:
    - Add Kubernetes integration: [`vault_kubernetes_secret_backend`](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/kubernetes_secret_backend)
    - Configure LDAP authentication: [`vault_ldap_auth_backend`](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/ldap_auth_backend)
 
-3. **Connect your mounts to `vault-yaml` modules** by passing the mount path to the appropriate modules in `terraform/modules/secrets-engines` or `terraform/modules/auth-methods`. See [`main.tf`](https://github.com/gateplane-io/vault-yaml/blob/main/terraform/main.tf#L34) for a complete example.
+3. **Connect your mounts to the `vault-yaml` root module** through its `mounts` and `auth_methods` objects. Their top-level keys select the internal submodules, and each configured auth method declares its principal `alias`. See [`terraform/examples/complete/main.tf`](terraform/examples/complete/main.tf) for a complete example.
 
 ### Bring Your Own Vault (BYOV)
 
-You can use vault-yaml with **existing Vault/OpenBao instances** - without replacing or disrupting your current configuration.
+You can use `vault-yaml` with existing Vault/OpenBao mounts and auth methods. Passing them to the Terraform module does not transfer ownership of those mounts: their lifecycle remains with the caller. The module manages the roles, policies, and principal attachments selected by the access document.
 
-In this repository, the separation between `vault-yaml` and BYOV resources can be seen under `terraform/` directory. The `byov.tf` files are meant to pre-date the `vault-yaml` files (`main.tf`, `gateplane.tf`)
+#### Before applying
 
-#### Gradual Migration
+Vault APIs commonly use create-or-update behavior. Terraform cannot reliably detect an unmanaged remote role or policy during planning, so an existing object with the same generated name may be changed during apply rather than reported as an ownership conflict.
 
-`vault-yaml` works alongside your existing setup:
+Before onboarding an existing environment:
 
-- **Existing roles and policies are preserved** - `vault-yaml` does not delete or modify your existing configuration (`terraform plan` will fail if resources with the same name exist)
-- **New resources are added incrementally** - your `accesses.yaml` file provisions new roles and policies defined in the YAML
-- **No disruption to existing workflows** - your current operations continue uninterrupted
+1. Inventory existing roles and policies under the selected mounts.
+2. Review the generated names in a non-production environment and in the Terraform plan.
+3. Resolve collisions with `name_prefix`, or import an existing object when Terraform should become its owner.
+4. Confirm that every top-level access-document path matches the intended mount path and every principal prefix matches an auth-method `alias`.
+5. Apply gradually, starting with a small access document and a limited set of mounts.
 
-#### How it works
+Objects with unrelated names remain outside this module's state and are not managed by `vault-yaml`. Removing an object that is already managed by this module from the access document can, however, plan its deletion.
 
-Simply reference your existing Secrets Engines and Auth Methods when configuring `vault-yaml` modules:
+#### Examples
 
-1. **For existing secrets engines**: Connect an existing mount (e.g., `/pki` or `/kubernetes`) to the corresponding `vault-yaml` module using the `mount` variable. The module will create new roles defined in your YAML alongside any existing roles.
-
-2. **For existing auth methods**: Reference your existing auth methods in the configuration. This enables `vault-yaml` to use principals (users, groups, entities) that are already authenticated through those auth methods.
-
-#### Example
-
-If you have an existing Kubernetes engine referenced by Terraform with `vault_kubernetes_secret_backend.kubernetes`, that already contains legacy roles:
-
-```hcl
-module "kubernetes" {
-  source = "github.com/gateplane-io/vault-yaml.git//terraform/modules/secrets-engines/kubernetes"
-
-  // Tying the vault-yaml configuration with existing Secrets Engine
-  mount = vault_kubernetes_secret_backend.kubernetes
-
-  // The directory where Kubernetes roles are defined (roles/kubernetes/<role_name>.yaml)
-  role_directory = "./roles/kubernetes"
-  // The `yamldecode` of your accessess.yaml file
-  accesses       = local.accesses
-}
-```
-
-Your existing roles remain untouched, and the new roles defined in the `accessess.yaml` are added alongside them.
-
-This approach allows you to **gradually adopt** `vault-yaml`'s declarative management style without requiring a risky "big bang" migration.
+- [`terraform/examples/byov-data`](terraform/examples/byov-data) shows existing Kubernetes and userpass mounts discovered through Terraform data sources, plus a certificate auth method supplied as a minimal `{ path, accessor }` object.
+- [`terraform/examples/complete`](terraform/examples/complete) shows caller-owned mount resources and a complete single module call.
 
 ## 🎯 GatePlane Services
 
@@ -461,7 +440,7 @@ The GatePlane Policy Gate plugin is free and fully included with `vault-yaml` un
 
 For enhanced visibility, you can subscribe to [GatePlane Services](https://gateplane.io) which adds real-time notifications (Slack, Teams, Discord) and access metrics/analytics to help you track usage patterns and identify bottlenecks.
 
-To enable GatePlane Services, add/uncomment the `gateplane_services` module to your [`terraform/gateplane.tf`](https://github.com/gateplane-io/vault-yaml/blob/main/terraform/gateplane.tf) file:
+To enable GatePlane Services, configure the `gateplane_services` module as shown in [`terraform/examples/complete/gateplane.tf`](terraform/examples/complete/gateplane.tf):
 
 After applying the configuration, run `terraform output gateplane_services_output` and send the output to `services@gateplane.io` to activate your subscription.
 

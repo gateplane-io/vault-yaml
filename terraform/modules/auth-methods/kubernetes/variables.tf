@@ -10,14 +10,22 @@
 
 variable "mount" {
   description = "The configuration object for the Kubernetes auth method, containing the mount path and accessor ([`vault_kubernetes_auth_backend_config`](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/kubernetes_auth_backend_config))."
+  type = object({
+    path     = string
+    accessor = string
+  })
 }
 
 variable "policies_list" {
-  description = "The full list of policies created by the Secrets Engine blocks"
-  # type        = list(map(any))
+  description = "The policies created by the secrets-engine modules, reduced to the fields required for principal authorization."
+  type = list(object({
+    key    = string
+    access = string
+  }))
 }
 
 variable "principal_key" {
-  description = "The key used as the Principal prefix (e.g. `<key>.default.external-secrets`)."
+  description = "The key used as the principal prefix (e.g. `<key>.default.external-secrets`)."
+  type        = string
   default     = "kubernetes"
 }

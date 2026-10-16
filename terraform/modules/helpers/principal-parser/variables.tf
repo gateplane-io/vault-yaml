@@ -9,8 +9,11 @@
 # except for providing this software as a commercial service or product.
 
 variable "policies_list" {
-  description = "Collection of policy mappings containing `key` and `access` attributes."
-  type        = any
+  description = "Collection of policy mappings containing the generated policy key and its principal access string."
+  type = list(object({
+    key    = string
+    access = string
+  }))
 }
 
 variable "principal_key" {

@@ -12,7 +12,7 @@ module "gateplane" {
   count  = var.enable_conditional_roles ? 1 : 0
   source = "../../helpers/conditional-access"
 
-  name_prefix = var.name_prefix
+  name_prefix = var.policy_name_prefix == null ? var.name_prefix : var.policy_name_prefix
 
   roles_conditional = module.parser.roles_list_conditional
   policies          = vault_policy.this

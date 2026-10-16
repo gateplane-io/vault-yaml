@@ -9,11 +9,13 @@
 # except for providing this software as a commercial service or product.
 
 variable "accesses" {
-  description = "Map of access configurations for creating ad-hoc policies, defining what paths and capabilities each access level requires."
+  description = "Map of access configurations for creating ad-hoc policies with heterogeneous role bodies."
+  type        = any
 }
 
 variable "name_prefix" {
   description = "Prefix to prepend to resource names created by this module."
+  type        = string
   default     = ""
 }
 
@@ -34,5 +36,6 @@ variable "auth_methods" {
 
 variable "enable_conditional_roles" {
   description = "Enable or disable conditional access roles that require approval workflows."
+  type        = bool
   default     = true
 }

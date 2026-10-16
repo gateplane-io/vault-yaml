@@ -10,11 +10,12 @@
 
 locals {
   # Normalize public arrays into stable maps before using for_each. Real Vault
-  # backends use their paths; mountless configurations use explicit aliases.
+  # backends use their paths; the single ad-hoc policy configuration uses its
+  # fixed access-document key; mountless auth configurations use aliases.
   pki_mounts        = { for config in var.mounts.pki : config.mount.path => config }
   kubernetes_mounts = { for config in var.mounts.kubernetes : config.mount.path => config }
   ssh_mounts        = { for config in var.mounts.ssh : config.mount.path => config }
-  vault_mounts      = { for config in var.mounts.vault : config.alias => config }
+  vault_mounts      = { for index, config in var.mounts.vault : "adhoc" => config if index == 0 }
 
   ldap_auth_methods       = { for config in var.auth_methods.ldap : config.mount.path => config }
   identity_auth_methods   = { for config in var.auth_methods.identity : config.alias => config }
@@ -68,9 +69,9 @@ module "pki" {
   mount                    = each.value.mount
   accesses                 = var.accesses
   issuer_id                = each.value.issuer_id
-  templated_common_names   = try(each.value.templated_common_names, {})
-  name_prefix              = try(each.value.name_prefix, "")
-  enable_conditional_roles = try(each.value.enable_conditional_roles, true)
+  templated_common_names   = each.value.templated_common_names
+  name_prefix              = join("-", compact([var.name_prefix, each.value.name_prefix]))
+  enable_conditional_roles = each.value.enable_conditional_roles
 }
 
 module "kubernetes_secrets" {
@@ -80,13 +81,11 @@ module "kubernetes_secrets" {
   mount                    = each.value.mount
   accesses                 = var.accesses
   role_directory           = each.value.role_directory
-  name_prefix              = try(each.value.name_prefix, "")
-  enable_conditional_roles = try(each.value.enable_conditional_roles, true)
-  name_template = try(
-    each.value.name_template,
-    "{{.DisplayName | replace \"_\" \"-\"  | replace \" \" \"\"}}-{{.RoleName | replace \"_\" \"-\"}}-{{unix_time}}s"
-  )
-  kubernetes_labels = try(each.value.kubernetes_labels, { managed_by = "vault" })
+  name_prefix              = each.value.name_prefix
+  policy_name_prefix       = join("-", compact([var.name_prefix, each.value.name_prefix]))
+  enable_conditional_roles = each.value.enable_conditional_roles
+  name_template            = each.value.name_template
+  kubernetes_labels        = each.value.kubernetes_labels
 }
 
 module "ssh" {
@@ -97,8 +96,8 @@ module "ssh" {
   accesses                 = var.accesses
   allowed_users            = each.value.allowed_users
   default_user             = each.value.default_user
-  name_prefix              = try(each.value.name_prefix, "")
-  enable_conditional_roles = try(each.value.enable_conditional_roles, true)
+  name_prefix              = join("-", compact([var.name_prefix, each.value.name_prefix]))
+  enable_conditional_roles = each.value.enable_conditional_roles
 }
 
 module "vault" {
@@ -109,8 +108,8 @@ module "vault" {
   role_directory           = each.value.role_directory
   auth_methods             = local.auth_methods
   secret_engines           = local.secret_engines
-  name_prefix              = try(each.value.name_prefix, "")
-  enable_conditional_roles = try(each.value.enable_conditional_roles, true)
+  name_prefix              = join("-", compact([var.name_prefix, each.value.name_prefix]))
+  enable_conditional_roles = each.value.enable_conditional_roles
 }
 
 locals {

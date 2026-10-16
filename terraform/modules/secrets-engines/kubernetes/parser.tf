@@ -11,7 +11,7 @@
 module "parser" {
   source = "../../helpers/role-parser"
 
-  name_prefix = var.name_prefix
+  name_prefix = var.policy_name_prefix == null ? var.name_prefix : var.policy_name_prefix
 
   accesses = var.accesses
   path     = var.mount.path

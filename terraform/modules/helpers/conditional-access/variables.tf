@@ -10,15 +10,29 @@
 
 variable "name_prefix" {
   description = "Prefix to prepend to resource names created by this module."
+  type        = string
   default     = ""
 }
 
 variable "roles_conditional" {
   description = "List of conditional role configurations that require approval workflows."
+  type = list(object({
+    key               = string
+    access_requestors = list(string)
+    access_approvers  = list(string)
+    access_conditional = object({
+      description           = string
+      required_approvals    = number
+      require_justification = bool
+    })
+  }))
 }
 
 variable "policies" {
   description = "Map of Vault policies that will be protected by conditional access gates."
+  type = map(object({
+    name = string
+  }))
 }
 
 variable "vault_addr" {

@@ -10,10 +10,15 @@
 
 variable "mount" {
   description = "The mount configuration object for the PKI secrets engine ([`vault_mount`](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/mount))."
+  type = object({
+    path     = string
+    accessor = string
+  })
 }
 
 variable "issuer_id" {
   description = "The ID of the issuer to use for generating certificates."
+  type        = string
 }
 
 variable "templated_common_names" {
@@ -24,15 +29,18 @@ variable "templated_common_names" {
 # ==========
 
 variable "accesses" {
-  description = "Map of access configurations for PKI secrets engine, defining roles and their certificate properties."
+  description = "Map of access configurations for PKI secrets engine, defining heterogeneous role bodies and their certificate properties."
+  type        = any
 }
 
 variable "name_prefix" {
   description = "Prefix to prepend to resource names created by this module."
+  type        = string
   default     = ""
 }
 
 variable "enable_conditional_roles" {
   description = "Enable or disable conditional access roles that require approval workflows."
+  type        = bool
   default     = true
 }

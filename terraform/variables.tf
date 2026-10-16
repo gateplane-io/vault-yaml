@@ -9,18 +9,129 @@
 # except for providing this software as a commercial service or product.
 
 variable "accesses" {
-  description = "Decoded vault-yaml access document, typically produced with yamldecode(file(...))."
+  description = "Decoded vault-yaml access document, typically produced with yamldecode(file(...)). This remains dynamic because role bodies differ by secrets-engine type and Terraform has no union types."
   type        = any
+
+  validation {
+    condition = can(alltrue([
+      for path, config in var.accesses : try(
+        trimspace(path) != "" &&
+        contains(["pki", "kubernetes", "ssh", "vault"], config.type) &&
+        can(keys(config.roles)) &&
+        length(setsubtract(toset(keys(config)), toset(["type", "roles"]))) == 0 &&
+        (config.type == "vault" ? path == "adhoc" : path != "adhoc"),
+        false,
+      )
+    ]))
+    error_message = "accesses must be a map of non-empty paths containing only type and roles; type must be pki, kubernetes, ssh, or vault, and only the vault type may use the reserved adhoc path."
+  }
+
+  validation {
+    condition = can(alltrue(flatten([
+      for config in var.accesses : [
+        for role_name, role in config.roles : try(
+          trimspace(role_name) != "" &&
+          can(keys(role.access)) &&
+          length(setsubtract(toset(keys(role.access)), toset(["static", "conditional"]))) == 0,
+          false,
+        )
+      ]
+    ])))
+    error_message = "Every role must have a non-empty name and an access object containing only static and conditional fields."
+  }
+
+  validation {
+    condition = can(alltrue(flatten([
+      for config in var.accesses : [
+        for role in config.roles : try(alltrue([
+          for principal in try(role.access.static, []) : trimspace(principal) != ""
+        ]), false)
+      ]
+    ])))
+    error_message = "Every access.static value must be a list of non-empty principal strings."
+  }
+
+  validation {
+    condition = can(alltrue(flatten([
+      for config in var.accesses : [
+        for role in config.roles : try(
+          length(keys(try(role.access.conditional, {}))) == 0 || (
+            length(setsubtract(
+              toset(keys(role.access.conditional)),
+              toset(["requestors", "approvers", "required_approvals", "require_justification", "description"]),
+            )) == 0 &&
+            alltrue([for principal in role.access.conditional.requestors : trimspace(principal) != ""]) &&
+            alltrue([for principal in role.access.conditional.approvers : trimspace(principal) != ""]) &&
+            try(role.access.conditional.required_approvals, 1) >= 1 &&
+            floor(try(role.access.conditional.required_approvals, 1)) == try(role.access.conditional.required_approvals, 1) &&
+            contains([true, false], try(role.access.conditional.require_justification, false)) &&
+            can(regex("(?s).*", try(role.access.conditional.description, "")))
+          ),
+          false,
+        )
+      ]
+    ])))
+    error_message = "Every non-empty access.conditional value must contain requestors and approvers lists of non-empty principal strings; optional required_approvals must be a positive integer, require_justification must be boolean, and description must be a string."
+  }
+}
+
+variable "name_prefix" {
+  description = "Prefix applied to all generated policy names. Per-mount name_prefix values, when set, are appended to this prefix."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.name_prefix == trimspace(var.name_prefix)
+    error_message = "name_prefix must not contain leading or trailing whitespace."
+  }
 }
 
 variable "mounts" {
-  description = "Secrets-engine configurations grouped into arrays by supported type."
+  description = "Secrets-engine configurations grouped into arrays by supported type. mounts.vault accepts at most one entry and always configures the adhoc access path."
   type = object({
-    pki        = optional(any, [])
-    kubernetes = optional(any, [])
-    ssh        = optional(any, [])
-    vault      = optional(any, [])
-    external   = optional(any, [])
+    pki = optional(list(object({
+      mount = object({
+        path     = string
+        accessor = string
+      })
+      issuer_id                = string
+      templated_common_names   = optional(map(string), {})
+      name_prefix              = optional(string, "")
+      enable_conditional_roles = optional(bool, true)
+    })), [])
+    kubernetes = optional(list(object({
+      mount = object({
+        path     = string
+        accessor = string
+      })
+      role_directory           = string
+      name_prefix              = optional(string, "")
+      enable_conditional_roles = optional(bool, true)
+      name_template            = optional(string, "{{.DisplayName | replace \"_\" \"-\"  | replace \" \" \"\"}}-{{.RoleName | replace \"_\" \"-\"}}-{{unix_time}}s")
+      kubernetes_labels        = optional(map(string), { managed_by = "vault" })
+    })), [])
+    ssh = optional(list(object({
+      mount = object({
+        path     = string
+        accessor = string
+      })
+      allowed_users            = string
+      default_user             = string
+      name_prefix              = optional(string, "")
+      enable_conditional_roles = optional(bool, true)
+    })), [])
+    vault = optional(list(object({
+      role_directory           = string
+      name_prefix              = optional(string, "")
+      enable_conditional_roles = optional(bool, true)
+    })), [])
+    external = optional(list(object({
+      alias = string
+      mount = object({
+        path     = string
+        accessor = string
+      })
+    })), [])
   })
   default = {}
 
@@ -50,16 +161,14 @@ variable "mounts" {
 
   validation {
     condition = try(alltrue([
-      for config in var.mounts.vault : trimspace(config.alias) != "" && trimspace(config.role_directory) != ""
+      for config in var.mounts.vault : trimspace(config.role_directory) != ""
     ]), false)
-    error_message = "Each mounts.vault entry requires alias and role_directory."
+    error_message = "The mounts.vault entry requires role_directory."
   }
 
   validation {
-    condition = length(var.mounts.vault) == length(distinct([
-      for config in var.mounts.vault : config.alias
-    ]))
-    error_message = "Each mounts.vault alias must be unique."
+    condition     = length(var.mounts.vault) <= 1
+    error_message = "mounts.vault accepts at most one entry because it always configures the adhoc access path."
   }
 
   validation {
@@ -89,11 +198,41 @@ variable "mounts" {
 variable "auth_methods" {
   description = "Authentication-method configurations grouped into arrays by supported type. Every entry requires an explicit principal alias."
   type = object({
-    ldap       = optional(any, [])
-    identity   = optional(any, [])
-    cert       = optional(any, [])
-    kubernetes = optional(any, [])
-    userpass   = optional(any, [])
+    ldap = optional(list(object({
+      alias = string
+      mount = object({
+        path     = string
+        accessor = string
+      })
+    })), [])
+    identity = optional(list(object({
+      alias     = string
+      exclusive = optional(bool, false)
+    })), [])
+    cert = optional(list(object({
+      alias = string
+      mount = object({
+        path     = string
+        accessor = string
+      })
+      trusted_certificate = string
+      exclusive           = optional(bool, false)
+    })), [])
+    kubernetes = optional(list(object({
+      alias = string
+      mount = object({
+        path     = string
+        accessor = string
+      })
+    })), [])
+    userpass = optional(list(object({
+      alias = string
+      mount = object({
+        path     = string
+        accessor = string
+      })
+      exclusive = optional(bool, false)
+    })), [])
   })
   default = {}
 

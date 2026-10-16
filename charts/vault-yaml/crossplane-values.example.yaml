@@ -25,14 +25,14 @@ _vaultYaml:
             email: '{{identity.entity.aliases.CONFIGURE_LDAP_ACCESSOR.name}}@my-org.example.com'
 
     kubernetes:
+      roleDefinitions:
+        reader: |
+          rules:
+            - apiGroups: [""]
+              resources: [pods]
+              verbs: [get, list]
       mounts:
         staging/cluster01:
-          roleDefinitions:
-            reader: |
-              rules:
-                - apiGroups: [""]
-                  resources: [pods]
-                  verbs: [get, list]
           nameTemplate: '{{.DisplayName}}-{{.RoleName}}-{{unix_time}}s'
           labels:
             managed_by: vault

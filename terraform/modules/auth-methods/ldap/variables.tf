@@ -10,14 +10,22 @@
 
 variable "mount" {
   description = "The configuration object for the LDAP auth method, containing the mount path and accessor ([`vault_ldap_auth_backend`](https://registry.terraform.io/providers/hashicorp/vault/latest/docs/resources/ldap_auth_backend))."
+  type = object({
+    path     = string
+    accessor = string
+  })
 }
 
 variable "policies_list" {
-  description = "The full list of policies created by the Secrets Engine blocks"
-  # type        = list(map(any))
+  description = "The policies created by the secrets-engine modules, reduced to the fields required for principal authorization."
+  type = list(object({
+    key    = string
+    access = string
+  }))
 }
 
 variable "principal_key" {
-  description = "The key to by used in Principals (e.g: `<key>.users.jdoe`)"
+  description = "The key to be used in principals (e.g. `<key>.users.jdoe`)."
+  type        = string
   default     = "ldap"
 }

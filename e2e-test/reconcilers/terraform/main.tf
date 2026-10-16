@@ -64,7 +64,6 @@ module "vault_yaml" {
     }]
 
     vault = [{
-      alias                    = "adhoc"
       role_directory           = "${path.module}/../../fixtures/roles/vault"
       enable_conditional_roles = false
     }]
