@@ -131,6 +131,76 @@ run "dispatches_multiple_auth_methods_with_explicit_aliases" {
   }
 }
 
+run "rejects_malformed_access_entry" {
+  command = plan
+
+  variables {
+    accesses = {
+      adhoc = {
+        type       = "pki"
+        roles      = {}
+        unexpected = true
+      }
+    }
+    mounts       = {}
+    auth_methods = {}
+  }
+
+  expect_failures = [var.accesses]
+}
+
+run "rejects_malformed_static_access" {
+  command = plan
+
+  variables {
+    accesses = {
+      pki = {
+        type = "pki"
+        roles = {
+          invalid = {
+            access = {
+              static      = "ldap.groups.Administrators"
+              conditional = {}
+            }
+          }
+        }
+      }
+    }
+    mounts       = {}
+    auth_methods = {}
+  }
+
+  expect_failures = [var.accesses]
+}
+
+run "rejects_malformed_conditional_access" {
+  command = plan
+
+  variables {
+    accesses = {
+      pki = {
+        type = "pki"
+        roles = {
+          invalid = {
+            access = {
+              static = []
+              conditional = {
+                requestors         = ["ldap.groups.Developers"]
+                approvers          = ["ldap.groups.Administrators"]
+                required_approvals = 0
+              }
+            }
+          }
+        }
+      }
+    }
+    mounts       = {}
+    auth_methods = {}
+  }
+
+  expect_failures = [var.accesses]
+}
+
 run "rejects_multiple_adhoc_configurations" {
   command = plan
 

@@ -13,7 +13,7 @@ variable "accesses" {
   type        = any
 
   validation {
-    condition = can(alltrue([
+    condition = try(alltrue([
       for path, config in var.accesses : try(
         trimspace(path) != "" &&
         contains(["pki", "kubernetes", "ssh", "vault"], config.type) &&
@@ -22,12 +22,12 @@ variable "accesses" {
         (config.type == "vault" ? path == "adhoc" : path != "adhoc"),
         false,
       )
-    ]))
+    ]), false)
     error_message = "accesses must be a map of non-empty paths containing only type and roles; type must be pki, kubernetes, ssh, or vault, and only the vault type may use the reserved adhoc path."
   }
 
   validation {
-    condition = can(alltrue(flatten([
+    condition = try(alltrue(flatten([
       for config in var.accesses : [
         for role_name, role in config.roles : try(
           trimspace(role_name) != "" &&
@@ -36,23 +36,23 @@ variable "accesses" {
           false,
         )
       ]
-    ])))
+    ])), false)
     error_message = "Every role must have a non-empty name and an access object containing only static and conditional fields."
   }
 
   validation {
-    condition = can(alltrue(flatten([
+    condition = try(alltrue(flatten([
       for config in var.accesses : [
         for role in config.roles : try(alltrue([
           for principal in try(role.access.static, []) : trimspace(principal) != ""
         ]), false)
       ]
-    ])))
+    ])), false)
     error_message = "Every access.static value must be a list of non-empty principal strings."
   }
 
   validation {
-    condition = can(alltrue(flatten([
+    condition = try(alltrue(flatten([
       for config in var.accesses : [
         for role in config.roles : try(
           length(keys(try(role.access.conditional, {}))) == 0 || (
@@ -64,14 +64,15 @@ variable "accesses" {
             alltrue([for principal in role.access.conditional.approvers : trimspace(principal) != ""]) &&
             try(role.access.conditional.required_approvals, 1) >= 1 &&
             floor(try(role.access.conditional.required_approvals, 1)) == try(role.access.conditional.required_approvals, 1) &&
+            try(role.access.conditional.required_approvals, 1) <= length(distinct(role.access.conditional.approvers)) &&
             contains([true, false], try(role.access.conditional.require_justification, false)) &&
             can(regex("(?s).*", try(role.access.conditional.description, "")))
           ),
           false,
         )
       ]
-    ])))
-    error_message = "Every non-empty access.conditional value must contain requestors and approvers lists of non-empty principal strings; optional required_approvals must be a positive integer, require_justification must be boolean, and description must be a string."
+    ])), false)
+    error_message = "Every non-empty access.conditional value must contain requestors and approvers lists of non-empty principal strings; optional required_approvals must be a positive integer no greater than the number of distinct approvers, require_justification must be boolean, and description must be a string."
   }
 }
 

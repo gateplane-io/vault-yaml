@@ -12,7 +12,7 @@
   "definitions": {
     "engineUnit": {
       "type": "object",
-      "required": ["type"],
+      "required": ["type", "roles"],
       "properties": {
         "type": {
           "type": "string",
